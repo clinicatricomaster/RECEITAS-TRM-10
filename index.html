@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RxTricoMaster — Receituário Médico</title>
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#013425">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RxTricoMaster">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -12,15 +19,21 @@
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #C5A365; border-radius: 3px; }
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 
+        /* ── SIDEBAR DESKTOP ── */
         #sidebar { width:220px; min-height:100vh; background:#013425; flex-shrink:0; display:flex; flex-direction:column; padding:20px 0; }
         .nav-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:10px; color:#a3b8b1; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.2s; margin:2px 8px; user-select:none; }
         .nav-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
         .nav-item.active { background:#C5A365; color:#013425; font-weight:700; }
 
+        /* ── BOTTOM NAV MOBILE ── */
+        #bottom-nav { display:none; position:fixed; bottom:0; left:0; right:0; background:#013425; z-index:150; border-top:1px solid rgba(255,255,255,0.08); padding:6px 0 env(safe-area-inset-bottom,6px); }
+        #bottom-nav .bn-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; flex:1; padding:6px 4px; color:#a3b8b1; font-size:10px; font-weight:500; cursor:pointer; border:none; background:transparent; font-family:'Inter',sans-serif; transition:color 0.2s; }
+        #bottom-nav .bn-item.active { color:#C5A365; }
+        #bottom-nav .bn-item svg { flex-shrink:0; }
+
         .card { background:#fff; border-radius:12px; border:1px solid #e8ece9; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
         .input-std { width:100%; padding:9px 12px; border:1.5px solid #d1d5db; border-radius:8px; font-size:14px; transition:border 0.2s; outline:none; font-family:'Inter',sans-serif; background:#fff; color:#1a1a1a; text-transform:capitalize; }
         .input-std:focus { border-color:#C5A365; box-shadow:0 0 0 3px rgba(197,163,101,0.12); }
-        /* Don't capitalize selects, textareas that are posologia/obs, email, password */
         input[type="email"], input[type="password"], input[type="date"], input[type="number"],
         select.input-std, textarea.input-std { text-transform:none; }
         .input-label { display:block; font-size:11px; font-weight:700; color:#666; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em; }
@@ -46,8 +59,8 @@
         .pill-green { background:#e8f5ee; color:#013425; }
         .pill-gold { background:#fdf5e8; color:#a07830; }
 
-        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
-        .modal-box { background:#fff; border-radius:16px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25); }
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:flex-end; justify-content:center; padding:0; }
+        .modal-box { background:#fff; border-radius:20px 20px 0 0; width:100%; max-height:92vh; overflow-y:auto; box-shadow:0 -8px 40px rgba(0,0,0,0.2); }
 
         .search-wrap { padding:12px 16px; border-bottom:1px solid #f0f0f0; }
         .search-row { display:flex; align-items:center; gap:8px; background:#f9fafb; border:1.5px solid #e8ece9; border-radius:8px; padding:0 12px; }
@@ -59,12 +72,76 @@
         .pag-btn:hover:not(:disabled) { background:#f5f5f5; }
         .pag-btn:disabled { opacity:0.4; cursor:not-allowed; }
 
-        .toast { position:fixed; bottom:24px; right:24px; z-index:9999; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,0.2); transform:translateY(80px); opacity:0; transition:all 0.3s; }
+        .toast { position:fixed; bottom:80px; right:16px; z-index:9999; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,0.2); transform:translateY(80px); opacity:0; transition:all 0.3s; }
         .toast.show { transform:translateY(0); opacity:1; }
         .toast.ok { background:#016630; }
         .toast.err { background:#dc2626; }
 
         .empty-state { text-align:center; padding:40px 24px; color:#ccc; font-size:14px; }
+
+        /* ── RESPONSIVE GRID HELPERS ── */
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+        .grid-editor { display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+        .grid-med { display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start; }
+
+        /* ── MOBILE (≤ 768px) ── */
+        @media (max-width: 768px) {
+            #sidebar { display:none !important; }
+            #bottom-nav { display:flex !important; }
+            #app-view { padding-bottom:70px; }
+            main { padding:16px !important; }
+
+            .grid-2 { grid-template-columns:1fr !important; }
+            .grid-3 { grid-template-columns:1fr !important; }
+            .grid-editor { grid-template-columns:1fr !important; }
+            .grid-med { grid-template-columns:1fr !important; }
+
+            /* Sidebar sticky em editor vira normal */
+            .editor-sidebar { position:static !important; }
+
+            /* Tabela vira cards em mobile */
+            .data-table thead { display:none; }
+            .data-table, .data-table tbody, .data-table tr, .data-table td { display:block; width:100%; }
+            .data-table tr { border-bottom:1px solid #eee; padding:10px 0; }
+            .data-table td { padding:4px 16px; border:none; font-size:13px; }
+            .data-table td:first-child { font-weight:600; font-size:14px; padding-top:10px; }
+            .data-table td:last-child { padding-bottom:10px; }
+            .data-table td[data-label]::before { content:attr(data-label); display:block; font-size:10px; font-weight:700; text-transform:uppercase; color:#aaa; letter-spacing:0.05em; margin-bottom:2px; }
+
+            .modal-overlay { align-items:flex-end; padding:0; }
+            .modal-box { border-radius:20px 20px 0 0; max-height:92vh; }
+
+            .btn-primary, .btn-ghost, .btn-green { padding:10px 14px; font-size:13px; }
+
+            /* Toast acima da bottom nav */
+            .toast { bottom:80px; right:12px; left:12px; text-align:center; }
+
+            /* Section headers */
+            .section-header { flex-direction:column !important; align-items:flex-start !important; gap:10px !important; }
+            .section-header button { width:100%; justify-content:center; }
+
+            /* Fórmula/Receita select toolbar */
+            .meds-toolbar { flex-direction:column !important; gap:8px !important; }
+            .meds-toolbar select { width:100% !important; }
+            .meds-toolbar button { width:100%; justify-content:center; }
+
+            /* Posologia select inline */
+            .posologia-header { flex-direction:column !important; align-items:flex-start !important; gap:6px !important; }
+            .posologia-header select { width:100% !important; max-width:100% !important; }
+
+            /* Editor back + title */
+            .editor-header { flex-wrap:wrap; gap:8px; }
+        }
+
+        /* ── TABLET (769px – 1024px) ── */
+        @media (min-width:769px) and (max-width:1024px) {
+            #sidebar { width:180px; }
+            .grid-3 { grid-template-columns:1fr 1fr !important; }
+            .grid-editor { grid-template-columns:1fr 260px; }
+            .grid-med { grid-template-columns:1fr !important; }
+            main { padding:20px !important; }
+        }
 
         /* PRINT */
         @page { size:A4; margin:15mm; }
@@ -119,6 +196,29 @@
 
 <!-- APP -->
 <div id="app-view" style="display:none; min-height:100vh; display:flex;">
+    <!-- BOTTOM NAV MOBILE -->
+    <nav id="bottom-nav">
+        <button class="bn-item active" id="bn-receitas" onclick="app.navigate('receitas')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Receitas
+        </button>
+        <button class="bn-item" id="bn-formulas" onclick="app.navigate('formulas')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+            Fórmulas
+        </button>
+        <button class="bn-item" id="bn-medicamentos" onclick="app.navigate('medicamentos')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v3"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.5-1.5"/></svg>
+            Meds
+        </button>
+        <button class="bn-item" id="bn-config" onclick="app.navigate('config')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M19.07 4.93A10 10 0 1 1 4.93 19.07"/></svg>
+            Config
+        </button>
+        <button class="bn-item" id="bn-sair" onclick="app.handleLogout()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sair
+        </button>
+    </nav>
     <aside id="sidebar">
         <div style="padding:0 16px 24px; display:flex; align-items:center; gap:10px;">
             <div style="width:36px; height:36px; border-radius:10px; background:rgba(197,163,101,0.15); display:flex;align-items:center;justify-content:center; flex-shrink:0;">
@@ -152,7 +252,7 @@
         <!-- ===== RECEITAS ===== -->
         <section id="view-receitas" style="display:none;">
             <div id="rec-list-view">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                <div class="section-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
                     <div><h1 style="font-size:20px;font-weight:700;color:#013425;">Receitas Médicas</h1><p style="font-size:13px;color:#888;">Mais recentes primeiro</p></div>
                     <button onclick="app.novaReceita()" class="btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Receita</button>
                 </div>
@@ -168,16 +268,16 @@
             </div>
 
             <div id="rec-editor-view" style="display:none;">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                <div class="editor-header" style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
                     <button onclick="app.voltarReceitaList()" class="btn-ghost" style="padding:8px 12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,18 9,12 15,6"/></svg> Voltar</button>
                     <h1 id="rec-editor-titulo" style="font-size:20px;font-weight:700;color:#013425;">Nova Receita</h1>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start;">
+                <div class="grid-editor">
                     <div style="display:flex; flex-direction:column; gap:16px;">
                         <!-- Dados -->
                         <div class="card" style="padding:20px;">
                             <h3 style="font-size:14px;font-weight:700;color:#013425;margin-bottom:14px;">Dados da Receita</h3>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                            <div class="grid-2">
                                 <div><label class="input-label">Paciente</label><input id="rec-paciente" type="text" class="input-std" placeholder="Nome completo"></div>
                                 <div><label class="input-label">Médico(a)</label><select id="rec-medico" class="input-std"><option value="">— Selecione —</option></select></div>
                                 <div><label class="input-label">CRM</label><input id="rec-crm" type="text" class="input-std" readonly style="background:#f9fafb;"></div>
@@ -189,7 +289,7 @@
                         <!-- Forma de Uso -->
                         <div class="card" style="padding:20px;">
                             <h3 style="font-size:14px;font-weight:700;color:#013425;margin-bottom:14px;">Forma de Uso</h3>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;">
+                            <div class="grid-2" style="align-items:end;">
                                 <div>
                                     <label class="input-label">Via / Forma</label>
                                     <select id="rec-forma-uso" class="input-std" onchange="app.onFormaUsoChange()">
@@ -216,7 +316,7 @@
                         <div class="card" style="padding:20px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                                 <h3 style="font-size:14px;font-weight:700;color:#013425;">Medicamentos</h3>
-                                <div style="display:flex;gap:8px;">
+                                <div class="meds-toolbar" style="display:flex;gap:8px;">
                                     <select id="rec-formula-select" class="input-std" style="font-size:13px;padding:7px 10px;" onchange="app.carregarFormula()">
                                         <option value="">📋 Usar Fórmula...</option>
                                     </select>
@@ -234,7 +334,7 @@
                             <div style="display:grid;gap:14px;">
                                 <div>
                                     <label class="input-label">Apresentação</label>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end;">
                                         <select id="rec-apresentacao" class="input-std" onchange="app.onRecApresentacaoChange()">
                                             <option value="">— Selecione —</option>
                                             <option value="Cápsula">Cápsula</option>
@@ -251,13 +351,17 @@
                                             <option value="Adesivo">Adesivo (Patch)</option>
                                             <option value="livre">Livre (personalizado)</option>
                                         </select>
+                                        <div style="display:flex;flex-direction:column;min-width:90px;">
+                                            <label class="input-label">Qtd.</label>
+                                            <input id="rec-apresentacao-qtd" type="text" class="input-std" placeholder="Ex: 2" style="text-transform:none;">
+                                        </div>
                                         <div id="rec-apresentacao-livre-wrap" style="display:none;">
                                             <input id="rec-apresentacao-livre" type="text" class="input-std" placeholder="Ex: Xampu Medicinal" style="text-transform:capitalize;">
                                         </div>
                                     </div>
                                 </div>
                                 <div>
-                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                    <div class="posologia-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                                         <label class="input-label" style="margin:0;">Posologia</label>
                                         <select id="rec-posologia-select" class="input-std" style="font-size:12px;padding:5px 8px;width:auto;max-width:260px;" onchange="app.onRecPosologiaSelect()">
                                             <option value="">+ Inserir padrão</option>
@@ -274,7 +378,7 @@
                     </div>
 
                     <!-- Sidebar -->
-                    <div style="position:sticky; top:20px; display:flex; flex-direction:column; gap:14px;">
+                    <div class="editor-sidebar" style="position:sticky; top:20px; display:flex; flex-direction:column; gap:14px;">
                         <div style="background:#013425;border-radius:12px;padding:18px;">
                             <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C5A365;margin-bottom:12px;">Resumo</p>
                             <div id="rec-resumo-meds" style="font-size:13px;color:#a3b8b1;margin-bottom:12px;"><span style="color:#5a8a77;">Nenhum medicamento</span></div>
@@ -295,7 +399,7 @@
         <!-- ===== FÓRMULAS ===== -->
         <section id="view-formulas" style="display:none;">
             <div id="form-list-view">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                <div class="section-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
                     <div><h1 style="font-size:20px;font-weight:700;color:#013425;">Fórmulas Padrão</h1><p style="font-size:13px;color:#888;">Receitas pré-configuradas e editáveis</p></div>
                     <button onclick="app.novaFormula()" class="btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Fórmula</button>
                 </div>
@@ -307,11 +411,11 @@
                 </div>
             </div>
             <div id="form-editor-view" style="display:none;">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                <div class="editor-header" style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
                     <button onclick="app.voltarFormulaList()" class="btn-ghost" style="padding:8px 12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,18 9,12 15,6"/></svg> Voltar</button>
                     <h1 id="form-editor-titulo" style="font-size:20px;font-weight:700;color:#013425;">Nova Fórmula</h1>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start;">
+                <div class="grid-editor">
                     <div style="display:flex; flex-direction:column; gap:16px;">
                         <div class="card" style="padding:20px;">
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
@@ -356,7 +460,7 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                    <div class="posologia-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                                         <label class="input-label" style="margin:0;">Posologia</label>
                                         <select id="form-posologia-select" class="input-std" style="font-size:12px;padding:5px 8px;width:auto;max-width:260px;" onchange="app.onFormPosologiaSelect()">
                                             <option value="">+ Inserir padrão</option>
@@ -371,7 +475,7 @@
                             </div>
                         </div>
                     </div>
-                    <div style="position:sticky;top:20px;">
+                    <div class="editor-sidebar" style="position:sticky;top:20px;">
                         <button onclick="app.saveFormula()" class="btn-primary" style="width:100%;padding:12px;font-size:15px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/></svg> Salvar Fórmula</button>
                     </div>
                 </div>
@@ -381,7 +485,7 @@
         <!-- ===== MEDICAMENTOS ===== -->
         <section id="view-medicamentos" style="display:none;">
             <div style="margin-bottom:20px;"><h1 style="font-size:20px;font-weight:700;color:#013425;">Medicamentos</h1><p style="font-size:13px;color:#888;">Cadastro com nome, dosagem e unidade</p></div>
-            <div style="display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start;">
+            <div class="grid-med">
                 <div class="card" style="padding:20px;">
                     <h3 id="med-form-title" style="font-size:15px;font-weight:700;color:#013425;margin-bottom:16px;">Novo Medicamento</h3>
                     <input type="hidden" id="med-id">
@@ -429,7 +533,7 @@
         <!-- ===== CONFIG ===== -->
         <section id="view-config" style="display:none;">
             <div style="margin-bottom:24px;"><h1 style="font-size:20px;font-weight:700;color:#013425;">Configurações</h1><p style="font-size:13px;color:#888;">Dados da clínica, médicos e posologias padrão</p></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start;max-width:1300px;">
+            <div class="grid-3" style="align-items:start;max-width:1300px;">
 
                 <!-- Dados da Clínica -->
                 <div class="card" style="padding:24px;">
@@ -519,6 +623,10 @@
                     </select>
                 </div>
             </div>
+            <div>
+                <label class="input-label">Qtd. deste medicamento (opcional)</label>
+                <input id="modal-med-qtd" type="text" class="input-std" placeholder="Ex: 30 cápsulas, 1 frasco, 2 ampolas..." style="text-transform:none;">
+            </div>
             <!-- Posologia específica por medicamento — só visível no contexto "receita" -->
             <div id="modal-posologia-med-wrap" style="display:none;">
                 <div style="border-top:1px solid #f0f0f0;padding-top:12px;">
@@ -564,5 +672,12 @@
     const db = firebase.firestore();
 </script>
 <script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>
