@@ -166,6 +166,9 @@ app.navigate = view => {
     app.show(`view-${view}`);
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
     const ni=app.el(`nav-${view}`); if(ni) ni.classList.add('active');
+    // Sync bottom nav
+    document.querySelectorAll('#bottom-nav .bn-item').forEach(b=>b.classList.remove('active'));
+    const bn=app.el(`bn-${view}`); if(bn) bn.classList.add('active');
     if(view==='receitas')     app.renderReceitaList();
     if(view==='formulas')     app.renderFormulaList();
     if(view==='medicamentos') app.renderMedicamentos();
@@ -184,9 +187,9 @@ app.renderMedicamentos = () => {
     empty.style.display='none'; table.style.display='table';
     app.el('med-tbody').innerHTML=items.map(m=>`
         <tr>
-            <td><span style="font-weight:600;color:#013425;">${m.nome}</span></td>
-            <td><span class="pill pill-gold">${app.fmtDosagem(m.dosagemQtd,m.dosagemUnidade)||'—'}</span></td>
-            <td style="text-align:center;">
+            <td data-label="Nome"><span style="font-weight:600;color:#013425;">${m.nome}</span></td>
+            <td data-label="Dosagem"><span class="pill pill-gold">${app.fmtDosagem(m.dosagemQtd,m.dosagemUnidade)||'—'}</span></td>
+            <td data-label="Ações" style="text-align:center;">
                 <div style="display:flex;justify-content:center;gap:2px;">
                     <button onclick="app.editMedicamento('${m.id}')" class="btn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                     <button onclick="app.deleteMedicamento('${m.id}')" class="btn-icon btn-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
@@ -285,7 +288,7 @@ app.abrirModalAddMed = (contexto) => {
             .map(m=>`<option value="${m.id}" data-qtd="${m.dosagemQtd||''}" data-un="${m.dosagemUnidade||'mg'}">${m.nome}${m.dosagemQtd?' — '+app.fmtDosagem(m.dosagemQtd,m.dosagemUnidade):''}</option>`).join('');
     app.setVal('modal-med-select',''); app.setVal('modal-med-nome','');
     app.setVal('modal-med-dosagem-qtd',''); app.setVal('modal-med-dosagem-unidade','mg');
-    app.setVal('modal-med-posologia','');
+    app.setVal('modal-med-posologia',''); app.setVal('modal-med-qtd','');
     // Mostrar campo de posologia por medicamento somente na receita
     const wrap=app.el('modal-posologia-med-wrap');
     if(wrap) wrap.style.display=modalContexto==='receita'?'block':'none';
@@ -310,15 +313,25 @@ app.onModalMedSelect = () => {
     app.setVal('modal-med-dosagem-unidade',opt.dataset.un||'mg');
 };
 
-app.fecharModalAddMed = () => app.hide('modal-add-med');
+app.fecharModalAddMed = () => {
+    app.hide('modal-add-med');
+    // Garantir que o botão sempre volta ao estado "Adicionar"
+    const btnConfirmar = document.querySelector('#modal-add-med .btn-primary');
+    if(btnConfirmar){
+        btnConfirmar.textContent = 'Adicionar';
+        btnConfirmar.onclick = app.confirmarAddMed;
+    }
+    app.el('modal-add-med-titulo').textContent = 'Adicionar Medicamento';
+};
 
 app.confirmarAddMed = () => {
     const nome=app.toTitleCase(app.val('modal-med-nome').trim());
     if(!nome) return app.toast('Informe o nome do medicamento.','err');
     const posologiaMed = modalContexto==='receita' ? app.val('modal-med-posologia').trim() : '';
+    const qtdMed = modalContexto==='receita' ? app.val('modal-med-qtd').trim() : '';
     const item={id:app.uid(),refId:app.val('modal-med-select')||null,nome,
         dosagemQtd:app.val('modal-med-dosagem-qtd').trim(),dosagemUnidade:app.val('modal-med-dosagem-unidade'),
-        posologiaMed};
+        posologiaMed, qtdMed};
     if(modalContexto==='receita'){
         if(!receitaEmEdicao.medicamentos) receitaEmEdicao.medicamentos=[];
         receitaEmEdicao.medicamentos.push(item); app.renderReceitaMeds();
@@ -353,13 +366,70 @@ app.renderReceitaMeds = () => {
                 <div>
                     <span style="font-weight:600;font-size:14px;color:#013425;">${m.nome}</span>
                     ${m.dosagemQtd?`<span class="pill pill-gold" style="margin-left:8px;">${app.fmtDosagem(m.dosagemQtd,m.dosagemUnidade)}</span>`:''}
+                    ${m.qtdMed?`<span style="font-size:12px;color:#888;margin-left:6px;">· Qtd: ${m.qtdMed}</span>`:''}
                 </div>
-                <button onclick="app.removeRecMed(${i})" class="btn-icon btn-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                <div style="display:flex;gap:4px;">
+                    <button onclick="app.editRecMed(${i})" class="btn-icon btn-gold" title="Editar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button onclick="app.removeRecMed(${i})" class="btn-icon btn-danger" title="Excluir"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                </div>
             </div>
             ${m.posologiaMed?`<div style="padding:6px 14px 10px;font-size:12px;color:#666;border-top:1px solid #eee;"><strong style="color:#C5A365;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Posologia específica: </strong>${m.posologiaMed}</div>`:''}
         </div>`).join('');
 };
 app.removeRecMed = i => { receitaEmEdicao.medicamentos.splice(i,1); app.renderReceitaMeds(); };
+
+app.editRecMed = i => {
+    const m = receitaEmEdicao.medicamentos[i];
+    if(!m) return;
+    // Abre o modal no modo edição
+    modalContexto = 'receita';
+    app.el('modal-add-med-titulo').textContent = `Editando — ${m.nome}`;
+    // Popular select de medicamentos
+    const sel=app.el('modal-med-select');
+    sel.innerHTML='<option value="">— Selecione ou preencha manualmente —</option>'+
+        [...appData.medicamentos].sort((a,b)=>a.nome.localeCompare(b.nome))
+            .map(med=>`<option value="${med.id}" data-qtd="${med.dosagemQtd||''}" data-un="${med.dosagemUnidade||'mg'}">${med.nome}${med.dosagemQtd?' — '+app.fmtDosagem(med.dosagemQtd,med.dosagemUnidade):''}</option>`).join('');
+    // Preencher campos com os dados atuais
+    app.setVal('modal-med-select', m.refId||'');
+    app.setVal('modal-med-nome', m.nome);
+    app.setVal('modal-med-dosagem-qtd', m.dosagemQtd||'');
+    app.setVal('modal-med-dosagem-unidade', m.dosagemUnidade||'mg');
+    app.setVal('modal-med-posologia', m.posologiaMed||'');
+    app.setVal('modal-med-qtd', m.qtdMed||'');
+    // Mostrar campo de posologia
+    const wrap=app.el('modal-posologia-med-wrap');
+    if(wrap) wrap.style.display='block';
+    app._popularSelectPosologia('modal-posologia-select');
+    // Trocar botão "Adicionar" por "Salvar alterações"
+    const btnConfirmar = document.querySelector('#modal-add-med .btn-primary');
+    if(btnConfirmar){
+        btnConfirmar.textContent = 'Salvar Alterações';
+        btnConfirmar.onclick = () => app.salvarEdicaoRecMed(i);
+    }
+    app.show('modal-add-med','flex');
+};
+
+app.salvarEdicaoRecMed = i => {
+    const nome=app.toTitleCase(app.val('modal-med-nome').trim());
+    if(!nome) return app.toast('Informe o nome do medicamento.','err');
+    receitaEmEdicao.medicamentos[i] = {
+        ...receitaEmEdicao.medicamentos[i],
+        nome,
+        dosagemQtd: app.val('modal-med-dosagem-qtd').trim(),
+        dosagemUnidade: app.val('modal-med-dosagem-unidade'),
+        posologiaMed: app.val('modal-med-posologia').trim(),
+        qtdMed: app.val('modal-med-qtd').trim()
+    };
+    // Restaurar botão para modo "Adicionar"
+    const btnConfirmar = document.querySelector('#modal-add-med .btn-primary');
+    if(btnConfirmar){
+        btnConfirmar.textContent = 'Adicionar';
+        btnConfirmar.onclick = app.confirmarAddMed;
+    }
+    app.fecharModalAddMed();
+    app.renderReceitaMeds();
+    app.toast('Medicamento atualizado!');
+};
 
 app.renderFormulaMeds = () => {
     const lista=formulaEmEdicao.medicamentos||[];
@@ -497,12 +567,12 @@ app.renderReceitaList = () => {
     empty.style.display='none'; table.style.display='table';
     app.el('rec-tbody').innerHTML=items.map(r=>`
         <tr>
-            <td style="font-size:12px;color:#aaa;">${r.id}</td>
-            <td>${new Date(r.data+'T12:00:00').toLocaleDateString('pt-BR')}</td>
-            <td style="font-weight:500;">${r.paciente}</td>
-            <td style="font-size:13px;color:#013425;font-weight:500;">${r.medico||'—'}</td>
-            <td style="font-size:12px;color:#888;">${r.crm||'—'}</td>
-            <td style="text-align:center;">
+            <td data-label="#">${r.id}</td>
+            <td data-label="Data">${new Date(r.data+'T12:00:00').toLocaleDateString('pt-BR')}</td>
+            <td data-label="Paciente" style="font-weight:500;">${r.paciente}</td>
+            <td data-label="Médico" style="font-size:13px;color:#013425;font-weight:500;">${r.medico||'—'}</td>
+            <td data-label="CRM" style="font-size:12px;color:#888;">${r.crm||'—'}</td>
+            <td data-label="Ações" style="text-align:center;">
                 <div style="display:flex;justify-content:center;gap:3px;">
                     <button onclick="app.imprimirReceita('${r.id}')" class="btn-icon" title="Imprimir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
                     <button onclick="app.editReceita('${r.id}')" class="btn-icon" title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -516,7 +586,7 @@ app.recPagePrev=()=>{ ui.recPage--; app.renderReceitaList(); };
 app.recPageNext=()=>{ ui.recPage++; app.renderReceitaList(); };
 
 app.novaReceita = () => {
-    receitaEmEdicao={id:null,paciente:'',medicoId:'',medico:'',crm:'',especialidade:'',data:new Date().toISOString().slice(0,10),diagnostico:'',formaUso:'oral',formaUsoLivre:'',apresentacao:'',apresentacaoLivre:'',posologia:'',obs:'',medicamentos:[]};
+    receitaEmEdicao={id:null,paciente:'',medicoId:'',medico:'',crm:'',especialidade:'',data:new Date().toISOString().slice(0,10),diagnostico:'',formaUso:'oral',formaUsoLivre:'',apresentacao:'',apresentacaoLivre:'',apresentacaoQtd:'',posologia:'',obs:'',medicamentos:[]};
     app.abrirEditorReceita('Nova Receita');
 };
 
@@ -564,6 +634,7 @@ app.abrirEditorReceita = titulo => {
         app.setVal('rec-apresentacao',''); app.setVal('rec-apresentacao-livre','');
         const wA=app.el('rec-apresentacao-livre-wrap'); if(wA) wA.style.display='none';
     }
+    app.setVal('rec-apresentacao-qtd', r.apresentacaoQtd||'');
 
     const selMed=app.el('rec-medico');
     selMed.innerHTML='<option value="">— Selecione o médico —</option>'+
@@ -642,6 +713,7 @@ app.saveReceita = async () => {
         formaUso:app.val('rec-forma-uso'),
         formaUsoLivre:app.val('rec-forma-uso-livre').trim(),
         apresentacao:app._getRecApresentacaoTexto(),
+        apresentacaoQtd:app.val('rec-apresentacao-qtd').trim(),
         posologia:app.val('rec-posologia').trim(),
         obs:app.val('rec-obs').trim()
     };
@@ -680,6 +752,7 @@ app.imprimirReceita = recId => {
     const medicoNome=rec.medico||(medicoObj?medicoObj.nome:'');
     const medicoCrm=rec.crm||(medicoObj?medicoObj.crm:'');
     const medicoEsp=rec.especialidade||(medicoObj?medicoObj.especialidade||'':'');
+    const assinatura=medicoObj?.assinatura||'';
 
     // Forma de uso (antes dos medicamentos)
     const formaUsoLabels = {oral:'Via Oral',topica:'Uso Tópico',injetavel:'Via Injetável',sublingual:'Via Sublingual',inalatoria:'Via Inalatória',oftalmico:'Uso Oftálmico',nasal:'Uso Nasal',retal:'Uso Retal',vaginal:'Uso Vaginal'};
@@ -694,10 +767,11 @@ app.imprimirReceita = recId => {
 
     // Apresentação (após medicamentos)
     const apresentacaoTexto = rec.apresentacao || '';
+    const apresentacaoQtdTexto = rec.apresentacaoQtd || '';
     const apresentacaoHtml = apresentacaoTexto ? `
         <div style="margin-top:16px;">
             <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#000;margin-bottom:6px;">Apresentação</p>
-            <div style="font-size:13px;color:#000;">${apresentacaoTexto}</div>
+            <div style="font-size:13px;color:#000;">${apresentacaoTexto}${apresentacaoQtdTexto?' — Qtd: '+apresentacaoQtdTexto:''}</div>
         </div>` : '';
 
     // Medicamentos: nome + dosagem. Se tiver posologia específica, mostrar abaixo do nome
@@ -706,6 +780,7 @@ app.imprimirReceita = recId => {
             <div style="display:flex;align-items:baseline;gap:10px;">
                 <span style="font-size:14px;font-weight:700;color:#000;">${m.nome}</span>
                 ${m.dosagemQtd?`<span style="font-size:13px;color:#000;">${app.fmtDosagem(m.dosagemQtd,m.dosagemUnidade)}</span>`:''}
+                ${m.qtdMed?`<span style="font-size:12px;color:#000;">— Qtd: ${m.qtdMed}</span>`:''}
             </div>
             ${m.posologiaMed?`<div style="font-size:12px;color:#000;margin-top:3px;padding-left:4px;">${m.posologiaMed}</div>`:''}
         </div>`).join('');
@@ -769,6 +844,7 @@ app.imprimirReceita = recId => {
 
         <!-- Assinatura no final da página -->
         <div class="p-footer" style="text-align:center;">
+            ${assinatura?`<img src="${assinatura}" style="height:160px;max-width:600px;object-fit:contain;display:block;margin:0 auto 8px;" alt="Assinatura">`:'<div style="height:160px;"></div>'}
             <p style="font-size:14px;font-weight:700;color:#000;margin:0;">${medicoNome}</p>
             ${medicoEsp?`<p style="font-size:12px;color:#000;margin:3px 0 0;">${medicoEsp}</p>`:''}
             <p style="font-size:12px;color:#000;margin:4px 0 0;font-weight:600;">${medicoCrm}</p>
