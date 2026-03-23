@@ -20,6 +20,7 @@ let appData = {
 
 let ui = {
     userId: null, userDocRef: null,
+    perfil: 'admin',
     viewAtiva: 'receitas',
     recPage: 1, recSearch: '',
     formPage: 1, formSearch: '',
@@ -120,13 +121,55 @@ app.init = () => {
             ui.userId=user.uid;
             ui.userDocRef=db.collection('rxmaster_v1').doc(user.uid);
             app.hide('login-view'); app.show('loading-view',true);
+            await app.loadPerfil(user.uid);
             await app.loadData();
             app.hide('loading-view'); app.show('app-view',true);
+            app.aplicarRestricaoPerfil();
             app.navigate('receitas');
         } else {
             app.show('login-view',true); app.hide('loading-view'); app.hide('app-view');
         }
     });
+};
+
+// ─── PERFIL ───────────────────────────────────────────────────────────────────
+
+app.loadPerfil = async uid => {
+    try {
+        const doc = await db.collection('users').doc(uid).get();
+        if(doc.exists){
+            ui.perfil = doc.data().perfil || 'medico';
+        } else {
+            // Primeiro acesso: assume admin.
+            // Para outros usuários, defina o perfil manualmente no Console do Firebase:
+            // Coleção "users" → documento com o UID → campo "perfil": "medico"
+            ui.perfil = 'admin';
+        }
+    } catch(e){
+        console.warn('Erro ao carregar perfil, assumindo médico por segurança.');
+        ui.perfil = 'medico';
+    }
+};
+
+app.aplicarRestricaoPerfil = () => {
+    const isMedico = ui.perfil === 'medico';
+    // Menus restritos para médico: Configurações, Medicamentos, Fórmulas
+    const restritos = ['nav-config','nav-medicamentos','nav-formulas',
+                       'bn-config','bn-medicamentos','bn-formulas'];
+    restritos.forEach(id => {
+        const el = app.el(id);
+        if(el) el.style.display = isMedico ? 'none' : '';
+    });
+    // Bloquear navigate para seções restritas
+    if(isMedico){
+        const _nav = app.navigate.bind(app);
+        app.navigate = view => {
+            if(['config','medicamentos','formulas'].includes(view)){
+                app.toast('Acesso restrito.','err'); return;
+            }
+            _nav(view);
+        };
+    }
 };
 
 app.handleLogin = e => {
