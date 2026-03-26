@@ -1,9 +1,1393 @@
-/*
- * TricoMaster Manager v7.0
- * Melhorias: ordem menu, copiar protocolo, editor de itens no orçamento,
- * cortesia, search + paginação, kits expandidos na impressão,
- * parcelado com total, médico padrão em config.
- */
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TricoMaster · App</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* ── Brand greens ── */
+  --verde:     #013425;   /* primário: topbar, cabeçalhos */
+  --verde-md:  #044E38;   /* hover botão verde */
+  --verde-clr: #0B5E43;   /* hover sidebar */
+  --verde-bdr: #a3b8b1;   /* bordas verdes / nav inativo */
+  /* ── Gold ── */
+  --gold:      #C5A365;   /* botão primário, destaques, nav ativo */
+  --gold-hov:  #b59254;   /* hover botão dourado */
+  --gold-clr:  #fdf5e8;   /* fundo pill gold */
+  /* ── Surfaces ── */
+  --creme:     #F2F4F3;   /* background geral */
+  --branco:    #ffffff;   /* cards */
+  --cinza-1:   #f9fafb;   /* fundo input, fundo pill neutro */
+  --cinza-2:   #e8ece9;   /* bordas de card */
+  --cinza-3:   #d1d5db;   /* bordas de input */
+  --cinza-4:   #888888;   /* labels secundários */
+  --cinza-5:   #666666;   /* labels de campo */
+  --preto:     #1a1a1a;   /* texto principal */
+  /* ── Feedback ── */
+  --vm:        #dc2626;   /* erro, danger */
+  --vm-bg:     #fef2f2;
+  --am-bg:     #fff7ed;   /* laranja claro */
+  --am-tx:     #f97316;   /* laranja cortesia */
+  /* ── Layout ── */
+  --r:         12px;
+  --rsm:       8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: var(--creme); color: var(--preto); min-height: 100vh; font-size: 14px; }
+
+.shell { max-width: 480px; margin: 0 auto; background: var(--branco); min-height: 100vh; box-shadow: 0 0 40px rgba(0,0,0,.08); display: flex; flex-direction: column; }
+
+/* ── topbar ── */
+.topbar { background: var(--verde); padding: 16px 20px 0; position: sticky; top: 0; z-index: 100; }
+.topbar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.logo { font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -.3px; }
+.logo span { font-weight: 400; color: var(--gold); }
+.badge-env { font-size: 10px; font-weight: 600; letter-spacing: .8px; background: rgba(197,163,101,.2); color: var(--gold); padding: 3px 10px; border-radius: 20px; }
+.tabs { display: flex; }
+.tab { flex: 1; text-align: center; padding: 10px 0 14px; font-size: 13px; font-weight: 500; color: var(--verde-bdr); cursor: pointer; border: none; background: none; border-bottom: 2.5px solid transparent; transition: all .2s; }
+.tab.active { color: #fff; border-bottom-color: var(--gold); }
+
+/* ── content ── */
+.content { padding: 24px 20px 56px; flex: 1; overflow-y: auto; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ── progress ── */
+.prog-wrap { display: flex; gap: 6px; margin-bottom: 24px; align-items: center; }
+.prog-step { flex: 1; height: 4px; border-radius: 4px; background: var(--cinza-2); transition: background .3s; }
+.prog-step.done { background: var(--gold); }
+.prog-label { font-size: 11px; color: var(--cinza-4); white-space: nowrap; margin-left: 4px; }
+
+/* ── headings ── */
+.form-title { font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 700; color: var(--verde); margin-bottom: 4px; letter-spacing: -.3px; }
+.form-sub   { font-size: 13px; color: var(--cinza-4); margin-bottom: 24px; font-weight: 400; }
+.sec-head {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--verde); margin: 22px 0 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sec-head::after { content:''; flex:1; height:1px; background: var(--cinza-2); }
+
+/* ── fields ── */
+.field { margin-bottom: 14px; }
+.field > label, .lbl {
+  display: block; font-size: 11px; font-weight: 600; letter-spacing: .5px;
+  color: var(--cinza-5); text-transform: uppercase; margin-bottom: 6px;
+}
+.field input[type=text],
+.field input[type=number],
+.field textarea,
+.field select {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid var(--cinza-3); border-radius: var(--rsm);
+  background: var(--cinza-1); font-family: 'Inter', sans-serif;
+  font-size: 14px; color: var(--preto); outline: none; transition: border .2s;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--gold); background: var(--branco); }
+.field textarea { resize: none; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* ── pills ── */
+.pill-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border: 1.5px solid var(--cinza-3); border-radius: 24px;
+  font-size: 13px; font-weight: 500; color: var(--cinza-5); cursor: pointer; user-select: none;
+  transition: all .15s; background: var(--branco);
+}
+.pill::before { content:''; width:7px; height:7px; border-radius:50%; border:1.5px solid var(--cinza-3); flex-shrink:0; transition:all .15s; }
+.pill:hover   { border-color: var(--gold); background: var(--gold-clr); color: var(--preto); }
+.pill.sel     { background: var(--gold-clr); border-color: var(--gold); color: var(--verde); font-weight:600; }
+.pill.sel::before { background: var(--gold); border-color: var(--gold); }
+
+/* ── queda onde ── */
+.queda-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.queda-item { background: var(--cinza-1); border-radius: var(--rsm); padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; }
+.queda-item span { font-size: 13px; color: var(--cinza-5); }
+.sn-pair { display: flex; gap: 6px; }
+.sn-btn { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight:500; cursor: pointer; border: 1px solid var(--cinza-3); background: var(--branco); color: var(--cinza-4); transition: all .15s; }
+.sn-btn.sel-s { background: var(--gold-clr); border-color: var(--gold); color: var(--verde); font-weight:600; }
+.sn-btn.sel-n { background: var(--cinza-1); border-color: var(--cinza-3); color: var(--cinza-5); font-weight:600; }
+
+/* ── doença rows (médico) ── */
+.dx-bloco { border: 1.5px solid var(--cinza-2); border-radius: var(--r); overflow: hidden; margin-bottom: 14px; }
+.dx-row   { padding: 10px 14px; border-bottom: 1px solid var(--cinza-1); }
+.dx-row:last-child { border-bottom: none; }
+.dx-row-top { display: flex; align-items: center; gap: 10px; }
+.dx-nome  { font-size: 13px; flex: 1; }
+.dx-detail { margin-top: 6px; display: none; }
+.dx-detail input, .dx-detail textarea {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--cinza-3); border-radius: 6px;
+  font-size: 13px; background: var(--cinza-1); font-family: 'Inter', sans-serif; color: var(--preto);
+}
+
+/* inline scale row: label + buttons on same line */
+.scale-inline { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.scale-inline .scale-lbl { font-size: 11px; font-weight: 600; letter-spacing: .5px; color: var(--cinza-5); text-transform: uppercase; white-space: nowrap; min-width: 100px; }
+.scale-inline .scale-row { margin-top: 0; flex-wrap: nowrap; }
+.rp { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight:500; cursor: pointer; border: 1px solid var(--cinza-3); background: var(--branco); color: var(--cinza-4); transition: all .15s; white-space: nowrap; }
+.rp-x { font-size: 13px; font-weight: 700; line-height: 1; opacity: .6; margin-left: 2px; }
+.rp-x:hover { opacity: 1; }
+.rp:hover    { background: var(--cinza-1); }
+.rp.sel-nao  { background: #e6f2ec; border-color: var(--verde); color: var(--verde); font-weight: 600; }
+.rp.sel-sim  { background: var(--vm-bg); border-color: #F5C6C5; color: var(--vm); font-weight: 600; }
+
+/* ── escalas ── */
+.scale-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.scale-btn { width: 40px; height: 40px; border-radius: 8px; border: 1.5px solid var(--cinza-3); background: var(--branco); font-size: 14px; font-weight:500; cursor: pointer; transition: all .15s; color: var(--cinza-5); }
+.scale-btn:hover { border-color: var(--gold); background: var(--gold-clr); color: var(--verde); }
+.scale-btn.sel   { background: var(--verde); border-color: var(--verde); color: #fff; }
+
+/* ── cards info ── */
+.info-bloco { background: var(--cinza-1); border-radius: var(--r); padding: 14px 16px; margin-bottom: 14px; }
+.info-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--cinza-2); gap: 12px; }
+.info-row:last-child { border-bottom: none; }
+.info-label { font-size: 11px; font-weight:600; color: var(--cinza-4); letter-spacing:.3px; white-space:nowrap; }
+.info-val   { font-size: 13px; color: var(--preto); text-align: right; max-width: 65%; }
+
+/* ── tratamento box ── */
+.trat-box { background: var(--gold-clr); border: 1.5px solid #e8d4aa; border-radius: var(--r); padding: 14px 16px; margin-bottom: 14px; }
+.trat-box .trat-tit { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--verde); margin-bottom:10px; }
+.trat-box textarea { width:100%; background:transparent; border:none; font-family:'Inter',sans-serif; font-size:13px; color:#5a3e10; line-height:1.6; resize:none; outline:none; min-height:80px; }
+
+/* ── familiar / tipos ── */
+.fam-entrada { border: 1.5px solid var(--cinza-2); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; }
+.fam-top     { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.fam-top input { padding: 9px 12px; border: 1.5px solid var(--cinza-3); border-radius: var(--rsm); font-size: 13px; font-family: 'Inter', sans-serif; background: var(--cinza-1); width: 100%; }
+.tipos-grid  { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 10px 0 6px; }
+.tipo-card   { border: 2px solid var(--cinza-2); border-radius: var(--rsm); padding: 8px 4px; text-align: center; cursor: pointer; transition: all .15s; background: var(--branco); }
+.tipo-card:hover { border-color: var(--gold); background: var(--gold-clr); }
+.tipo-card.sel   { border-color: var(--gold); background: var(--gold-clr); }
+.tipo-card svg   { display: block; margin: 0 auto 4px; }
+.tipo-card .tlbl { font-size: 10px; font-weight:600; color: var(--cinza-5); }
+.tipo-card.sel .tlbl { color: var(--verde); }
+.fam-sel { font-size: 12px; color: var(--cinza-4); min-height: 18px; margin-top: 4px; }
+.fam-sel span { background: var(--gold-clr); color: var(--verde); border: 1px solid var(--gold); padding: 2px 8px; border-radius: 10px; font-weight:600; font-size:11px; }
+
+/* ── médico paciente cards ── */
+.pac-card { background: var(--branco); border: 1.5px solid var(--cinza-2); border-radius: var(--r); padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 14px; }
+.pac-card:hover { border-color: var(--gold); box-shadow: 0 2px 12px rgba(1,52,37,.08); }
+.pac-avatar { width:44px; height:44px; border-radius:50%; background:var(--gold-clr); color:var(--verde); font-family:'Inter',sans-serif; font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pac-nome { font-size:14px; font-weight:600; }
+.pac-hora { font-size:12px; color:var(--cinza-4); margin-top:2px; }
+.tag      { font-size:10px; font-weight:700; letter-spacing:.5px; padding:4px 10px; border-radius:20px; }
+.tag-ok   { background:var(--gold-clr); color:#7a5c2a; border: 1px solid #e0c88a; }
+.tag-wait { background:var(--am-bg); color:var(--am-tx); }
+
+/* ── sub-tabs médico ── */
+.sub-tabs { display: flex; gap: 0; border-bottom: 1.5px solid var(--cinza-2); margin-bottom: 20px; }
+.sub-tab  { flex: 1; text-align: center; padding: 10px 0; font-size: 13px; font-weight:500; color: var(--cinza-4); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -1.5px; transition: all .2s; }
+.sub-tab.active { color: var(--verde); border-bottom-color: var(--gold); font-weight:600; }
+
+/* ── buttons ── */
+.btn { width:100%; padding:14px; border-radius:var(--r); border:none; font-family:'Inter',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; margin-top:12px; letter-spacing:.2px; }
+.btn-primary   { background: var(--gold); color: #fff; }
+.btn-primary:hover { background: var(--gold-hov); }
+.btn-secondary { background: var(--cinza-1); color: var(--cinza-5); border:1.5px solid var(--cinza-2); }
+.btn-secondary:hover { background: var(--cinza-2); }
+.btn-pdf { background: var(--verde); color: #fff; border: none; }
+.btn-pdf:hover { background: var(--verde-md); }
+.btn-save { background: var(--verde); color: #fff; border: none; }
+.btn-save:hover { background: var(--verde-md); }
+.btn-sm  { width:auto; padding:9px 18px; font-size:13px; }
+.back-btn { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500; color:var(--verde); cursor:pointer; margin-bottom:20px; background:none; border:none; }
+
+/* ── success ── */
+.success-card { background: var(--gold-clr); border: 1.5px solid #e0c88a; border-radius: var(--r); padding: 32px 24px; text-align:center; display:none; }
+.success-card h2 { font-family:'Inter',sans-serif; font-size:20px; font-weight:700; color:var(--verde); margin-bottom:8px; }
+.success-card p  { font-size:14px; color:var(--cinza-5); line-height:1.6; }
+
+/* ── toast / loader ── */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:#016630; color:#fff; padding:12px 24px; border-radius:30px; font-size:13px; font-weight:500; transition:transform .3s; z-index:999; white-space:nowrap; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+.loader-wrap { display:none; flex-direction:column; align-items:center; padding:28px 0; gap:12px; }
+.spinner { width:36px; height:36px; border:3px solid var(--cinza-2); border-top-color:var(--gold); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loader-txt { font-size:13px; color:var(--cinza-4); }
+
+/* readonly style */
+input[readonly] { background: var(--cinza-1) !important; color: var(--cinza-4); cursor: default; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-head">
+      <div class="logo">Trico<span>Master</span></div>
+      <div class="badge-env">MVP · TESTE</div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('pac')" id="tab-pac">Paciente</button>
+      <button class="tab" onclick="pedirSenha()" id="tab-med">Médico 🔒</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══════════════════ PACIENTE ══════════════════ -->
+    <div class="screen active" id="screen-pac">
+      <div id="pac-form">
+
+        <!-- ETAPA 1 -->
+        <div id="step1">
+          <div class="prog-wrap">
+            <div class="prog-step done"></div><div class="prog-step"></div>
+            <div class="prog-step"></div><div class="prog-step"></div>
+            <span class="prog-label">1 de 4</span>
+          </div>
+          <div class="form-title">Questionário</div>
+          <div class="form-sub">Preencha antes da consulta. Leva menos de 5 minutos.</div>
+
+          <div class="field">
+            <label>Data</label>
+            <input type="text" id="p-data" readonly/>
+          </div>
+          <div class="field">
+            <label>Nome completo</label>
+            <input type="text" id="p-nome" placeholder="Seu nome completo"/>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Idade</label><input type="number" id="p-idade" placeholder="Ex: 32"/></div>
+            <div class="field"><label>Profissão</label><input type="text" id="p-prof" placeholder="Ex: Professora"/></div>
+          </div>
+          <div class="field">
+            <label>Possui convênio médico?</label>
+            <div class="pill-group" id="pg-conv" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+            <input type="text" id="p-conv-qual" placeholder="Qual convênio?" style="margin-top:8px;display:none"/>
+          </div>
+          <div class="field">
+            <label>Como nos conheceu?</label>
+            <div class="pill-group" id="pg-conheceu" data-type="multi">
+              <div class="pill" data-val="Google" onclick="selPill(this)">Google</div>
+              <div class="pill" data-val="Instagram" onclick="selPill(this)">Instagram</div>
+              <div class="pill" data-val="Facebook" onclick="selPill(this)">Facebook</div>
+              <div class="pill" data-val="Indicação" onclick="selPill(this)">Indicação</div>
+              <div class="pill" data-val="Outros" onclick="selPill(this)">Outros</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="goStep(2)">Continuar →</button>
+        </div>
+
+        <!-- ETAPA 2 -->
+        <div id="step2" style="display:none">
+          <div class="prog-wrap">
+            <div class="prog-step done"></div><div class="prog-step done"></div>
+            <div class="prog-step"></div><div class="prog-step"></div>
+            <span class="prog-label">2 de 4</span>
+          </div>
+          <div class="form-title">Queixa principal</div>
+          <div class="form-sub">Conte o que está acontecendo com seus cabelos.</div>
+
+          <div class="field">
+            <label>1. Tipo de queixa</label>
+            <div class="pill-group" id="pg-queixa" data-type="multi">
+              <div class="pill" data-val="Queda de cabelo" onclick="selPill(this)">Queda de cabelo</div>
+              <div class="pill" data-val="Falhas" onclick="selPill(this)">Falhas</div>
+              <div class="pill" data-val="Quebra de fios" onclick="selPill(this)">Quebra de fios</div>
+              <div class="pill" data-val="Outros" onclick="selPill(this)">Outros</div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Tempo do problema</label><input type="text" id="p-tempo" placeholder="Ex: 3 meses"/></div>
+            <div class="field"><label>Fios por dia (média)</label><input type="text" id="p-fios" placeholder="Ex: ~80"/></div>
+          </div>
+          <div class="field">
+            <label>2. O problema está</label>
+            <div class="pill-group" id="pg-prog" data-type="radio">
+              <div class="pill" data-val="Estável" onclick="selPill(this)">Estável</div>
+              <div class="pill" data-val="Aumentando" onclick="selPill(this)">Aumentando</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Queda ocorre onde?</label>
+            <div class="queda-grid">
+              <div class="queda-item"><span>No banho</span><div class="sn-pair"><button class="sn-btn" onclick="selSN(this,'qb','S')">Sim</button><button class="sn-btn" onclick="selSN(this,'qb','N')">Não</button></div></div>
+              <div class="queda-item"><span>Ao escovar</span><div class="sn-pair"><button class="sn-btn" onclick="selSN(this,'qe','S')">Sim</button><button class="sn-btn" onclick="selSN(this,'qe','N')">Não</button></div></div>
+              <div class="queda-item"><span>No chão</span><div class="sn-pair"><button class="sn-btn" onclick="selSN(this,'qc','S')">Sim</button><button class="sn-btn" onclick="selSN(this,'qc','N')">Não</button></div></div>
+              <div class="queda-item"><span>Na roupa</span><div class="sn-pair"><button class="sn-btn" onclick="selSN(this,'qr','S')">Sim</button><button class="sn-btn" onclick="selSN(this,'qr','N')">Não</button></div></div>
+              <div class="queda-item"><span>No travesseiro</span><div class="sn-pair"><button class="sn-btn" onclick="selSN(this,'qt','S')">Sim</button><button class="sn-btn" onclick="selSN(this,'qt','N')">Não</button></div></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>3. Alterações no couro cabeludo</label>
+            <div class="pill-group" id="pg-couro" data-type="multi">
+              <div class="pill" data-val="Oleosidade" onclick="selPill(this)">Oleosidade</div>
+              <div class="pill" data-val="Caspa" onclick="selPill(this)">Caspa</div>
+              <div class="pill" data-val="Crostas" onclick="selPill(this)">Crostas</div>
+              <div class="pill" data-val="Descamação" onclick="selPill(this)">Descamação</div>
+              <div class="pill" data-val="Vermelhidão" onclick="selPill(this)">Vermelhidão</div>
+              <div class="pill" data-val="Coceira" onclick="selPill(this)">Coceira</div>
+              <div class="pill" data-val="Ardor" onclick="selPill(this)">Ardor</div>
+              <div class="pill" data-val="Odor" onclick="selPill(this)">Odor</div>
+              <div class="pill" data-val="Secreção" onclick="selPill(this)">Secreção</div>
+              <div class="pill" data-val="Dor" onclick="selPill(this)">Dor</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>4. Já apresentou outras crises?</label>
+            <div class="pill-group" id="pg-crise" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+            <input type="text" id="p-crise-q" placeholder="Quando?" style="margin-top:8px;display:none"/>
+          </div>
+          <div class="field">
+            <label>5. Já fez tratamento para este problema?</label>
+            <div class="pill-group" id="pg-tratou" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+            <input type="text" id="p-trat-q" placeholder="Quando?" style="margin-top:8px;display:none"/>
+          </div>
+          <div class="field">
+            <label>Tipos de tratamento realizados</label>
+            <div class="pill-group" id="pg-trattipos" data-type="multi">
+              <div class="pill" data-val="Fórmulas via oral" onclick="selPill(this)">Fórmulas oral</div>
+              <div class="pill" data-val="Solução capilar" onclick="selPill(this)">Solução capilar</div>
+              <div class="pill" data-val="Mesoterapia" onclick="selPill(this)">Mesoterapia</div>
+              <div class="pill" data-val="PRP" onclick="selPill(this)">PRP</div>
+              <div class="pill" data-val="Microagulhamento" onclick="selPill(this)">Microagulhamento</div>
+              <div class="pill" data-val="Shampoo antiqueda" onclick="selPill(this)">Shampoo antiqueda</div>
+              <div class="pill" data-val="Laserterapia" onclick="selPill(this)">Laserterapia</div>
+              <div class="pill" data-val="MMP" onclick="selPill(this)">MMP</div>
+              <div class="pill" data-val="Terapia capilar" onclick="selPill(this)">Terapia capilar</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="goStep(3)">Continuar →</button>
+          <button class="btn btn-secondary" onclick="goStep(1)">← Voltar</button>
+        </div>
+
+        <!-- ETAPA 3 -->
+        <div id="step3" style="display:none">
+          <div class="prog-wrap">
+            <div class="prog-step done"></div><div class="prog-step done"></div>
+            <div class="prog-step done"></div><div class="prog-step"></div>
+            <span class="prog-label">3 de 4</span>
+          </div>
+          <div class="form-title">Hábitos capilares</div>
+          <div class="form-sub">Rotina e cuidados com o cabelo.</div>
+
+          <div class="field">
+            <label>6. Está tomando alguma medicação?</label>
+            <div class="pill-group" id="pg-med" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+            <textarea id="p-med-q" rows="2" placeholder="Quais medicamentos?" style="margin-top:8px;display:none"></textarea>
+          </div>
+          <div class="field">
+            <label>7. Com qual frequência lava os cabelos?</label>
+            <div class="pill-group" id="pg-lav" data-type="radio">
+              <div class="pill" data-val="1x/semana" onclick="selPill(this)">1x/semana</div>
+              <div class="pill" data-val="2x/semana" onclick="selPill(this)">2x/semana</div>
+              <div class="pill" data-val="3x/semana" onclick="selPill(this)">3x/semana</div>
+              <div class="pill" data-val="Todo dia" onclick="selPill(this)">Todo dia</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>8. Faz química no cabelo?</label>
+            <div class="pill-group" id="pg-quim" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+            <div id="quim-detail" style="display:none;margin-top:10px">
+              <div class="pill-group" id="pg-quimtipo" data-type="multi" style="margin-bottom:8px">
+                <div class="pill" data-val="Tintura" onclick="selPill(this)">Tintura</div>
+                <div class="pill" data-val="Tonalizante" onclick="selPill(this)">Tonalizante</div>
+                <div class="pill" data-val="Botox" onclick="selPill(this)">Botox</div>
+                <div class="pill" data-val="Progressiva" onclick="selPill(this)">Progressiva</div>
+                <div class="pill" data-val="Outros" onclick="selPill(this)">Outros</div>
+              </div>
+              <div class="row2">
+                <input type="text" id="p-quim-freq" placeholder="Frequência" style="padding:9px 12px;border:1.5px solid var(--cinza-3);border-radius:var(--rsm);font-family:'Inter',sans-serif;font-size:13px;background:var(--cinza-1)"/>
+                <input type="text" id="p-quim-4m" placeholder="Últimos 4 meses" style="padding:9px 12px;border:1.5px solid var(--cinza-3);border-radius:var(--rsm);font-family:'Inter',sans-serif;font-size:13px;background:var(--cinza-1)"/>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>9. Utiliza chapinha / escova?</label>
+            <div class="pill-group" id="pg-chap" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+            <input type="text" id="p-chap-freq" placeholder="Com qual frequência?" style="margin-top:8px;display:none"/>
+          </div>
+          <div class="field">
+            <label>9. Tem alongamento?</label>
+            <div class="pill-group" id="pg-along" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+            <input type="text" id="p-along-t" placeholder="Há quanto tempo?" style="margin-top:8px;display:none"/>
+          </div>
+          <button class="btn btn-primary" onclick="goStep(4)">Continuar →</button>
+          <button class="btn btn-secondary" onclick="goStep(2)">← Voltar</button>
+        </div>
+
+        <!-- ETAPA 4 -->
+        <div id="step4" style="display:none">
+          <div class="prog-wrap">
+            <div class="prog-step done"></div><div class="prog-step done"></div>
+            <div class="prog-step done"></div><div class="prog-step done"></div>
+            <span class="prog-label">4 de 4</span>
+          </div>
+          <div class="form-title">Histórico familiar</div>
+          <div class="form-sub">Alguém na família tem ou teve calvície? Selecione o tipo.</div>
+          <div id="fam-entradas"></div>
+          <button class="btn btn-secondary btn-sm" onclick="addFamEntrada()" style="margin-top:0">+ Adicionar familiar</button>
+          <div style="margin-top:20px;background:var(--cinza-1);border-radius:var(--r);padding:14px 16px">
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;line-height:1.6;color:var(--cinza-5)">
+              <input type="checkbox" id="p-decl" style="width:16px;height:16px;margin-top:2px;flex-shrink:0;accent-color:var(--verde-md)"/>
+              Declaro que as informações acima são verdadeiras e de minha responsabilidade.
+            </label>
+          </div>
+          <button class="btn btn-primary" onclick="submitPac()" style="margin-top:20px">Enviar para a clínica ✓</button>
+          <button class="btn btn-secondary" onclick="goStep(3)">← Voltar</button>
+        </div>
+      </div>
+
+      <div class="success-card" id="pac-ok">
+        <div style="font-size:48px;margin-bottom:12px">🌿</div>
+        <h2>Questionário enviado!</h2>
+        <p>A clínica recebeu seus dados.<br>Aguarde ser chamado pelo médico.</p>
+      </div>
+    </div><!-- /screen-pac -->
+
+    <!-- ══════════════════ MÉDICO ══════════════════ -->
+    <div class="screen" id="screen-med">
+
+      <!-- lista -->
+      <div id="med-lista">
+        <div class="form-title" style="margin-bottom:4px">Pacientes de hoje</div>
+        <div class="form-sub">Quinta-feira, 19 de março de 2026</div>
+        <div class="pac-card" onclick="openPac(0)">
+          <div class="pac-avatar">AB</div>
+          <div style="flex:1"><div class="pac-nome">Ana Beatriz Silva</div><div class="pac-hora">09:00 · Queda de cabelo</div></div>
+          <span class="tag tag-ok">Ficha ok</span>
+        </div>
+        <div class="pac-card" onclick="alert('Paciente não preencheu o questionário ainda.')">
+          <div class="pac-avatar" style="background:var(--am-bg);color:var(--am-tx)">RF</div>
+          <div style="flex:1"><div class="pac-nome">Rodrigo Ferreira</div><div class="pac-hora">10:30 · Primeira consulta</div></div>
+          <span class="tag tag-wait">Aguardando</span>
+        </div>
+        <div class="pac-card" onclick="openPac(1)">
+          <div class="pac-avatar">CM</div>
+          <div style="flex:1"><div class="pac-nome">Carla Menezes</div><div class="pac-hora">11:30 · Retorno</div></div>
+          <span class="tag tag-ok">Ficha ok</span>
+        </div>
+      </div>
+
+      <!-- prontuário -->
+      <div id="med-pront" style="display:none">
+        <button class="back-btn" onclick="closePac()">← Voltar à lista</button>
+        <div class="form-title" id="mp-nome">—</div>
+        <div class="form-sub" id="mp-hora">—</div>
+
+        <!-- sub-tabs -->
+        <div class="sub-tabs">
+          <button class="sub-tab active" id="st-quest" onclick="subTab('quest')">Questionário</button>
+          <button class="sub-tab" id="st-anam" onclick="subTab('anam')">Anamnese</button>
+          <button class="sub-tab" id="st-trico" onclick="subTab('trico')">Tricoscopia</button>
+        </div>
+
+        <!-- ── SUB: Questionário do paciente ── -->
+        <div id="sub-quest">
+          <div class="sec-head">Dados do paciente</div>
+          <div class="info-bloco">
+            <div class="info-row"><span class="info-label">Queixa</span><span class="info-val">Queda de cabelo, Falhas</span></div>
+            <div class="info-row"><span class="info-label">Tempo / Fios/dia</span><span class="info-val">3 meses · ~80 fios</span></div>
+            <div class="info-row"><span class="info-label">Evolução</span><span class="info-val">Aumentando</span></div>
+            <div class="info-row"><span class="info-label">Couro cabeludo</span><span class="info-val">Oleosidade, Coceira</span></div>
+            <div class="info-row"><span class="info-label">Tratamentos ant.</span><span class="info-val">Shampoo antiqueda, PRP</span></div>
+            <div class="info-row"><span class="info-label">Medicação</span><span class="info-val">Levotiroxina 50mcg</span></div>
+            <div class="info-row"><span class="info-label">Lava cabelo</span><span class="info-val">Todo dia</span></div>
+            <div class="info-row"><span class="info-label">Química</span><span class="info-val">Tintura · a cada 2 meses</span></div>
+            <div class="info-row"><span class="info-label">Hist. familiar</span><span class="info-val">Mãe – Tipo I-2</span></div>
+          </div>
+        </div>
+
+        <!-- ── SUB: Anamnese (Histórico Pessoal preenchido pelo médico) ── -->
+        <div id="sub-anam" style="display:none">
+
+          <div class="field">
+            <label>Queixa principal (registro médico)</label>
+            <textarea id="m-queixa" rows="3" placeholder="Descreva a queixa conforme relatada pelo paciente..."></textarea>
+          </div>
+
+          <div class="sec-head">Antecedentes pessoais</div>
+          <div class="dx-bloco">
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">1. Doenças Cardíacas</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Qual?"/></div></div>
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">2. Doenças Renais</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Qual?"/></div></div>
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">3. Doenças Cancerígenas</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Qual?"/></div></div>
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">4. Doenças Neurológicas</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Qual?"/></div></div>
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">5. Doenças Hematológicas</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Qual?"/></div></div>
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">6. Doenças Autoimunes</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Qual?"/></div></div>
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">7. Alergia a Medicamentos</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Quais?"/></div></div>
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">8. Internações / Cirurgias recentes</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><textarea rows="2" placeholder="Descreva..."></textarea></div></div>
+          </div>
+
+          <div class="field">
+            <label>9. Medicamentos em uso</label>
+            <textarea id="m-meds" rows="2" placeholder="Liste os medicamentos e doses..."></textarea>
+          </div>
+
+          <div class="sec-head">Para mulheres</div>
+          <div class="dx-bloco">
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">1. Doenças Ginecológicas</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Qual?"/></div></div>
+          </div>
+
+          <div class="field">
+            <label>2. Ciclo menstrual</label>
+            <div class="pill-group" id="pg-ciclo" data-type="radio">
+              <div class="pill" data-val="Regular" onclick="selPill(this)">Regular</div>
+              <div class="pill" data-val="Irregular" onclick="selPill(this)">Irregular</div>
+              <div class="pill" data-val="Climatério" onclick="selPill(this)">Climatério</div>
+              <div class="pill" data-val="Histerectomia" onclick="selPill(this)">Histerectomia</div>
+              <div class="pill" data-val="Menopausa" onclick="selPill(this)">Menopausa</div>
+            </div>
+          </div>
+
+          <div class="row2">
+            <div class="field">
+              <label>3. SOP</label>
+              <div class="pill-group" id="pg-sop" data-type="radio">
+                <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+                <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+              </div>
+            </div>
+            <div class="field"><label>Fluxo</label><input type="text" id="m-fluxo" placeholder="Descreva"/></div>
+          </div>
+
+          <div class="field">
+            <label>4. Método de prevenção</label>
+            <div class="pill-group" id="pg-prev" data-type="multi">
+              <div class="pill" data-val="Anticoncepcional" onclick="selPill(this)">Anticoncepcional</div>
+              <div class="pill" data-val="Chip da Beleza" onclick="selPill(this)">Chip da Beleza</div>
+              <div class="pill" data-val="Laqueadura" onclick="selPill(this)">Laqueadura</div>
+              <div class="pill" data-val="DIU" onclick="selPill(this)">DIU</div>
+              <div class="pill" data-val="Preservativo" onclick="selPill(this)">Preservativo</div>
+              <div class="pill" data-val="Reposição Hormonal" onclick="selPill(this)">Reposição Hormonal</div>
+              <div class="pill" data-val="Comp. Vasectomizado" onclick="selPill(this)">Comp. Vasectomizado</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Quer engravidar?</label>
+            <div class="pill-group" id="pg-eng" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>5. Tem filhos?</label>
+            <div class="pill-group" id="pg-filhos" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+          </div>
+
+          <div class="sec-head">Hábitos e estilo de vida</div>
+          <div class="field">
+            <label>6. Alimentação</label>
+            <div class="pill-group" id="pg-alim" data-type="multi">
+              <div class="pill" data-val="Carne" onclick="selPill(this)">Carne</div>
+              <div class="pill" data-val="Frango" onclick="selPill(this)">Frango</div>
+              <div class="pill" data-val="Peixes" onclick="selPill(this)">Peixes</div>
+              <div class="pill" data-val="Ovos" onclick="selPill(this)">Ovos</div>
+              <div class="pill" data-val="Leite e Derivados" onclick="selPill(this)">Leite e Derivados</div>
+              <div class="pill" data-val="Carboidratos" onclick="selPill(this)">Carboidratos</div>
+              <div class="pill" data-val="Legumes" onclick="selPill(this)">Legumes</div>
+              <div class="pill" data-val="Verduras" onclick="selPill(this)">Verduras</div>
+              <div class="pill" data-val="Frutas" onclick="selPill(this)">Frutas</div>
+            </div>
+          </div>
+
+          <div class="row2">
+            <div class="field"><label>Água (litros/dia)</label><input type="text" id="m-agua" placeholder="Ex: 2L"/></div>
+          </div>
+
+          <div class="field">
+            <label>7. Peso últimos meses</label>
+            <div class="pill-group" id="pg-peso" data-type="radio">
+              <div class="pill" data-val="Ganhou peso" onclick="selPill(this)">Ganhou peso</div>
+              <div class="pill" data-val="Emagreceu" onclick="selPill(this)">Emagreceu</div>
+              <div class="pill" data-val="Mantendo" onclick="selPill(this)">Mantendo</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>8. Atividade física</label>
+            <div class="pill-group" id="pg-atv" data-type="radio">
+              <div class="pill" data-val="Não" onclick="selPill(this)">Não</div>
+              <div class="pill" data-val="Sim" onclick="selPill(this)">Sim</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>9. Hábito intestinal</label>
+            <div class="pill-group" id="pg-int" data-type="radio">
+              <div class="pill" data-val="Normal" onclick="selPill(this)">Normal</div>
+              <div class="pill" data-val="Constipado" onclick="selPill(this)">Constipado</div>
+              <div class="pill" data-val="Diarreico" onclick="selPill(this)">Diarreico</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>10. Antecedentes familiares</label>
+            <div class="pill-group" id="pg-antfam" data-type="multi">
+              <div class="pill" data-val="AAG" onclick="selPill(this)">AAG</div>
+              <div class="pill" data-val="Alopecia Areata" onclick="selPill(this)">Alopecia Areata</div>
+              <div class="pill" data-val="Alopecia Cicatricial" onclick="selPill(this)">Alopecia Cicatricial</div>
+            </div>
+            <input type="text" id="m-antfam-outras" placeholder="Outras..." style="margin-top:8px;padding:9px 12px;border:1.5px solid var(--cinza-3);border-radius:var(--rsm);font-family:'Inter',sans-serif;font-size:13px;background:var(--cinza-1);width:100%"/>
+          </div>
+
+          <button class="btn btn-secondary" onclick="subTab('trico')" style="margin-top:8px">Ir para Tricoscopia →</button>
+        </div>
+
+        <!-- ── SUB: Tricoscopia + Hipótese + Tratamento ── -->
+        <div id="sub-trico" style="display:none">
+
+          <div class="sec-head">Tricoscopia digital</div>
+          <div class="info-bloco" style="padding-bottom:4px">
+            <div class="field" style="margin-bottom:12px">
+              <label>1. Teste de tração</label>
+              <div class="pill-group" id="pg-trac" data-type="radio">
+                <div class="pill" data-val="Positivo" onclick="selPill(this)">Positivo</div>
+                <div class="pill" data-val="Negativo" onclick="selPill(this)">Negativo</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label>2. Haste</label>
+              <div class="pill-group" id="pg-haste" data-type="radio">
+                <div class="pill" data-val="Normal" onclick="selPill(this)">Normal</div>
+                <div class="pill" data-val="Ressecada" onclick="selPill(this)">Ressecada</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label>3. Miniaturização dos fios</label>
+              <div class="pill-group" id="pg-mini" data-type="radio">
+                <div class="pill" data-val="Ausente" onclick="selPill(this)">Ausente</div>
+                <div class="pill" data-val="Presente" onclick="selPill(this)">Presente</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label>4. Descamação</label>
+              <div class="pill-group" id="pg-desc" data-type="radio">
+                <div class="pill" data-val="Leve" onclick="selPill(this)">Leve</div>
+                <div class="pill" data-val="Moderada" onclick="selPill(this)">Moderada</div>
+                <div class="pill" data-val="Intensa" onclick="selPill(this)">Intensa</div>
+              </div>
+            </div>
+            <div style="margin-bottom:14px">
+              <div class="scale-inline">
+                <span class="scale-lbl">Hiperemia</span>
+                <div class="scale-row" id="sc-hip"></div>
+              </div>
+              <div class="scale-inline">
+                <span class="scale-lbl">Oleosidade</span>
+                <div class="scale-row" id="sc-ole"></div>
+              </div>
+              <div class="scale-inline">
+                <span class="scale-lbl">Cresc. fios</span>
+                <div class="scale-row" id="sc-cres"></div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:10px">
+              <label>Lesões / observações</label>
+              <input type="text" id="t-obs" placeholder="Descreva..."/>
+            </div>
+            <div class="pill-group" id="pg-outros-trico" data-type="multi" style="margin-bottom:8px">
+              <div class="pill" data-val="Pelos cadavéricos" onclick="selPill(this)">Pelos cadavéricos</div>
+              <div class="pill" data-val="Falhas" onclick="selPill(this)">Falhas</div>
+            </div>
+          </div>
+
+          <div class="sec-head">Hipótese diagnóstica</div>
+          <div class="dx-bloco">
+            <div class="dx-row" id="dr-agg"><div class="dx-row-top"><span class="dx-nome">AGG</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Grau / observação"/></div></div>
+            <div class="dx-row" id="dr-aa"><div class="dx-row-top"><span class="dx-nome">Alopecia Areata</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Observação"/></div></div>
+            <div class="dx-row" id="dr-ac"><div class="dx-row-top"><span class="dx-nome">Alopecia Cicatricial</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Observação"/></div></div>
+            <div class="dx-row" id="dr-ds"><div class="dx-row-top"><span class="dx-nome">Dermatite Seborreica</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Observação"/></div></div>
+            <div class="dx-row" id="dr-ef"><div class="dx-row-top"><span class="dx-nome">Eflúvio</span><span class="rp" data-side="nao" onclick="selDx(this,'nao')">Não</span><span class="rp" data-side="sim" onclick="selDx(this,'sim')">Sim</span></div><div class="dx-detail"><input type="text" placeholder="Tipo (telógeno / anágeno)"/></div></div>
+            <div class="dx-row"><div class="dx-row-top"><span class="dx-nome">Outras hipóteses</span></div><div class="dx-detail"><input type="text" id="dx-outras" placeholder="Diagnósticos adicionais"/></div></div>
+          </div>
+
+          <div class="sec-head">Tratamento proposto</div>
+          <div class="trat-box">
+            <div class="trat-tit">Conduta médica</div>
+            <textarea id="m-trat" rows="5" placeholder="Ex: Minoxidil 5% 1mL 2x/dia&#10;Fórmula oral: Biotina 10mg + Zinco&#10;Mesoterapia 1x/mês · 4 meses&#10;Retorno em 60 dias"></textarea>
+          </div>
+
+          <button class="btn btn-save" onclick="salvarPront()">Salvar prontuário</button>
+          <button class="btn btn-pdf" onclick="gerarPDF()">📄 Gerar PDF para impressão</button>
+          <div class="loader-wrap" id="pdf-loader">
+            <div class="spinner"></div>
+            <div class="loader-txt">Gerando PDF…</div>
+          </div>
+        </div>
+
+      </div><!-- /med-pront -->
+    </div><!-- /screen-med -->
+
+  </div><!-- /content -->
+
+<!-- ── MODAL SENHA ── -->
+<div id="modal-senha" style="
+  display:none; position:fixed; inset:0; z-index:500;
+  background:rgba(1,52,37,.7); backdrop-filter:blur(4px);
+  align-items:center; justify-content:center;
+">
+  <div style="
+    background:#fff; border-radius:16px; padding:32px 28px;
+    width:300px; box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center;
+  ">
+    <div style="font-size:32px; margin-bottom:12px">🔒</div>
+    <div style="font-family:'Inter',sans-serif; font-size:17px; font-weight:700; color:#013425; margin-bottom:6px">Área Médica</div>
+    <div style="font-family:'Inter',sans-serif; font-size:13px; color:#888; margin-bottom:20px">Digite a senha para continuar</div>
+    <input
+      type="password" id="input-senha"
+      placeholder="••••••"
+      onkeydown="if(event.key==='Enter')confirmarSenha()"
+      style="
+        width:100%; padding:12px 16px; font-size:16px; letter-spacing:4px;
+        border:1.5px solid #d1d5db; border-radius:10px; outline:none;
+        font-family:'Inter',sans-serif; text-align:center; margin-bottom:8px;
+      "
+    />
+    <div id="senha-erro" style="font-size:12px; color:#dc2626; min-height:18px; margin-bottom:12px"></div>
+    <button onclick="confirmarSenha()" style="
+      width:100%; padding:13px; border-radius:10px; border:none;
+      background:#C5A365; color:#fff; font-family:'Inter',sans-serif;
+      font-size:14px; font-weight:700; cursor:pointer; margin-bottom:10px;
+    ">Entrar</button>
+    <button onclick="fecharSenha()" style="
+      width:100%; padding:10px; border-radius:10px; border:1.5px solid #e8ece9;
+      background:#fff; color:#666; font-family:'Inter',sans-serif;
+      font-size:13px; cursor:pointer;
+    ">Cancelar</button>
+  </div>
+</div>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+// 1. Carregar o SDK do Supabase const { createClient } = supabase; // 2. Inicializar (substitua pelos seus valores) const sb = https://yxoedniamdyvoefmfrip.supabase.co; // 3. Salvar quando paciente enviar async function salvarQuestionario(dados) { const { error } = await sb .from('questionario') .insert(dados); if (error) console.error(error); }
+// ── data automática ──────────────────────────────────
+const hoje = new Date();
+document.getElementById('p-data').value =
+  hoje.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+
+// ── tabs ─────────────────────────────────────────────
+function switchTab(t) {
+  ['pac','med'].forEach(x => {
+    document.getElementById('tab-'+x).classList.toggle('active', x===t);
+    document.getElementById('screen-'+x).classList.toggle('active', x===t);
+  });
+}
+
+// ── sub-tabs médico ───────────────────────────────────
+function subTab(t) {
+  ['quest','anam','trico'].forEach(x => {
+    document.getElementById('st-'+x).classList.toggle('active', x===t);
+    document.getElementById('sub-'+x).style.display = x===t ? 'block' : 'none';
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── steps ─────────────────────────────────────────────
+let currentStep = 1;
+function goStep(n) {
+  document.getElementById('step'+currentStep).style.display = 'none';
+  currentStep = n;
+  document.getElementById('step'+n).style.display = 'block';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── pill universal ────────────────────────────────────
+function selPill(pill) {
+  const g = pill.closest('.pill-group');
+  const tipo = g.getAttribute('data-type');
+  if (tipo === 'radio') {
+    g.querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+    pill.classList.add('sel');
+  } else {
+    pill.classList.toggle('sel');
+  }
+  // side-effects
+  const id = g.id;
+  const v = getVal(id);
+  if (id==='pg-conv')   toggle('p-conv-qual',  v==='Sim');
+  if (id==='pg-crise')  toggle('p-crise-q',    v==='Sim');
+  if (id==='pg-tratou') toggle('p-trat-q',     v==='Sim');
+  if (id==='pg-med')    toggle('p-med-q',      v==='Sim');
+  if (id==='pg-quim')   toggle('quim-detail',  v==='Sim');
+  if (id==='pg-chap')   toggle('p-chap-freq',  v==='Sim');
+  if (id==='pg-along')  toggle('p-along-t',    v==='Sim');
+}
+function toggle(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = show ? 'block' : 'none';
+}
+function getVal(gid) {
+  const s = document.querySelector('#'+gid+' .pill.sel');
+  return s ? s.getAttribute('data-val') : '';
+}
+function getVals(gid) {
+  return [...document.querySelectorAll('#'+gid+' .pill.sel')].map(p => p.getAttribute('data-val'));
+}
+
+// ── queda onde ────────────────────────────────────────
+const quedaState = {};
+function selSN(btn, key, val) {
+  btn.closest('.sn-pair').querySelectorAll('.sn-btn').forEach(b => b.classList.remove('sel-s','sel-n'));
+  btn.classList.add(val==='S' ? 'sel-s' : 'sel-n');
+  quedaState[key] = val==='S' ? 'Sim' : 'Não';
+}
+
+// ── toggle dx (anamnese): padrão = Não visível, Sim oculto
+//    ao clicar Sim: some o Não, fica só Sim
+//    ao clicar Não (voltar): some o Sim, fica só Não
+function selDx(el, tipo) {
+  const row = el.closest('.dx-row');
+  const btnNao = row.querySelector('.rp[data-side="nao"]');
+  const btnSim = row.querySelector('.rp[data-side="sim"]');
+  const detail = row.querySelector('.dx-detail');
+
+  function resetDx() {
+    // volta os dois botões, sem seleção, sem detalhe
+    btnNao.style.display = 'inline-flex';
+    btnSim.style.display = 'inline-flex';
+    btnNao.classList.remove('sel-nao','sel-sim');
+    btnSim.classList.remove('sel-sim','sel-nao');
+    // remove × de ambos
+    [btnNao, btnSim].forEach(b => { const x = b.querySelector('.rp-x'); if(x) x.remove(); });
+    if (detail) detail.style.display = 'none';
+  }
+
+  function addX(btn) {
+    // remove × existentes antes de adicionar
+    [btnNao, btnSim].forEach(b => { const x = b.querySelector('.rp-x'); if(x) x.remove(); });
+    const x = document.createElement('span');
+    x.className = 'rp-x';
+    x.textContent = '×';
+    x.onclick = function(e) { e.stopPropagation(); resetDx(); };
+    btn.appendChild(x);
+  }
+
+  if (tipo === 'sim') {
+    btnNao.style.display = 'none';
+    btnSim.style.display = 'inline-flex';
+    btnSim.classList.add('sel-sim');
+    btnSim.classList.remove('sel-nao');
+    addX(btnSim);
+    if (detail) detail.style.display = 'block';
+  } else {
+    btnSim.style.display = 'none';
+    btnSim.classList.remove('sel-sim');
+    btnNao.style.display = 'inline-flex';
+    btnNao.classList.add('sel-nao');
+    btnNao.classList.remove('sel-sim');
+    addX(btnNao);
+    if (detail) detail.style.display = 'none';
+  }
+}
+
+
+
+// ── escalas /4 ────────────────────────────────────────
+['hip','ole','cres'].forEach(key => {
+  const w = document.getElementById('sc-'+key);
+  for (let i=0; i<=4; i++) {
+    const b = document.createElement('button');
+    b.className='scale-btn'; b.textContent=i; b.type='button';
+    b.onclick = () => { w.querySelectorAll('.scale-btn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); };
+    w.appendChild(b);
+  }
+});
+
+// ── SVG calvície ──────────────────────────────────────
+function svgM(flags) {
+  let p = `<ellipse cx="22" cy="26" rx="18" ry="22" fill="#F5E6D0" stroke="#C9AA8A" stroke-width="1"/>`;
+  if (!flags.includes('f-total')) {
+    const ry = flags.includes('f-forte') ? 9  : flags.includes('f-mod') ? 13 : flags.includes('f-leve') ? 17 : 20;
+    const cy = flags.includes('f-forte') ? 40 : flags.includes('f-mod') ? 37 : flags.includes('f-leve') ? 34 : 30;
+    p += `<ellipse cx="22" cy="${cy}" rx="14" ry="${ry}" fill="#4A2C1A" opacity=".8"/>`;
+  }
+  if (flags.includes('v-sm'))  p += `<ellipse cx="22" cy="24" rx="5"  ry="5"  fill="#F5E6D0" stroke="#C9AA8A" stroke-width=".5"/>`;
+  if (flags.includes('v-md'))  p += `<ellipse cx="22" cy="24" rx="9"  ry="9"  fill="#F5E6D0" stroke="#C9AA8A" stroke-width=".5"/>`;
+  if (flags.includes('v-lg'))  p += `<ellipse cx="22" cy="24" rx="13" ry="13" fill="#F5E6D0" stroke="#C9AA8A" stroke-width=".5"/>`;
+  if (flags.includes('v-xl'))  p += `<ellipse cx="22" cy="24" rx="15" ry="17" fill="#F5E6D0" stroke="#C9AA8A" stroke-width=".5"/>`;
+  if (flags.includes('f-mid')) p += `<rect x="9" y="6" width="26" height="9" rx="3" fill="#F5E6D0" opacity=".9"/>`;
+  return `<svg viewBox="0 0 44 52" width="38" height="46" xmlns="http://www.w3.org/2000/svg">${p}</svg>`;
+}
+
+function svgF(w) {
+  // w = largura da zona de afinamento central (0..32)
+  let p = `<ellipse cx="22" cy="28" rx="18" ry="22" fill="#F5E6D0" stroke="#C9AA8A" stroke-width="1"/>`;
+  p += `<path d="M4,20 Q4,6 22,6 Q40,6 40,20 Q38,13 22,13 Q6,13 4,20Z" fill="#4A2C1A" opacity=".8"/>`;
+  if (w > 0) p += `<rect x="${22-w/2}" y="6" width="${w}" height="28" rx="2" fill="#F0D8BE" opacity=".9"/>`;
+  p += `<line x1="22" y1="5" x2="22" y2="33" stroke="#C9AA8A" stroke-width=".8" stroke-dasharray="2,2"/>`;
+  return `<svg viewBox="0 0 44 52" width="38" height="46" xmlns="http://www.w3.org/2000/svg">${p}</svg>`;
+}
+
+const tiposM = [
+  {label:'Tipo I',    svg: svgM([])},
+  {label:'Tipo II',   svg: svgM(['f-leve'])},
+  {label:'Tipo IIa',  svg: svgM(['f-leve','f-mid'])},
+  {label:'Tipo III',  svg: svgM(['f-mod'])},
+  {label:'Tipo IIIv', svg: svgM(['f-mod','v-sm'])},
+  {label:'Tipo IV',   svg: svgM(['f-mod','v-md'])},
+  {label:'Tipo IVa',  svg: svgM(['f-forte'])},
+  {label:'Tipo V',    svg: svgM(['f-forte','v-lg'])},
+  {label:'Tipo VI',   svg: svgM(['f-total','v-lg'])},
+  {label:'Tipo VII',  svg: svgM(['f-total','v-xl'])},
+];
+const tiposF = [
+  {label:'I-1',    svg: svgF(3)},
+  {label:'I-2',    svg: svgF(7)},
+  {label:'I-3',    svg: svgF(12)},
+  {label:'I-4',    svg: svgF(17)},
+  {label:'II-1',   svg: svgF(20)},
+  {label:'II-2',   svg: svgF(24)},
+  {label:'III',    svg: svgF(28)},
+  {label:'Frontal',svg: svgF(32)},
+];
+
+// ── familiar ──────────────────────────────────────────
+let famCount = 0;
+const famData = {};
+
+function addFamEntrada() {
+  const id = 'fam' + (++famCount);
+  famData[id] = {parentesco:'', sexo:'', tipo:''};
+  const w = document.createElement('div');
+  w.className = 'fam-entrada'; w.id = id;
+  w.innerHTML = `
+    <div class="fam-top">
+      <input type="text" placeholder="Parentesco (ex: Mãe)" oninput="famData['${id}'].parentesco=this.value"/>
+      <div></div>
+    </div>
+    <div style="margin-bottom:8px">
+      <div class="lbl" style="margin-bottom:6px">Sexo</div>
+      <div class="pill-group" data-type="radio" style="gap:8px">
+        <div class="pill" data-val="M" onclick="setFamSexo('${id}','M',this)">Masculino</div>
+        <div class="pill" data-val="F" onclick="setFamSexo('${id}','F',this)">Feminino</div>
+      </div>
+    </div>
+    <div id="${id}-tipos" style="display:none">
+      <div class="lbl" style="margin-bottom:8px">Selecione o tipo de calvície</div>
+      <div id="${id}-grid" class="tipos-grid"></div>
+    </div>
+    <div class="fam-sel" id="${id}-sel">Nenhum tipo selecionado</div>
+  `;
+  document.getElementById('fam-entradas').appendChild(w);
+}
+
+function setFamSexo(id, sexo, pill) {
+  pill.closest('.pill-group').querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+  pill.classList.add('sel');
+  famData[id].sexo = sexo; famData[id].tipo = '';
+  document.getElementById(id+'-sel').innerHTML = 'Nenhum tipo selecionado';
+  const grid = document.getElementById(id+'-grid');
+  grid.innerHTML = '';
+  const tipos = sexo === 'M' ? tiposM : tiposF;
+  tipos.forEach(t => {
+    const c = document.createElement('div');
+    c.className = 'tipo-card';
+    c.innerHTML = t.svg + `<div class="tlbl">${t.label}</div>`;
+    c.onclick = () => {
+      grid.querySelectorAll('.tipo-card').forEach(x => x.classList.remove('sel'));
+      c.classList.add('sel');
+      famData[id].tipo = t.label;
+      const par = famData[id].parentesco || 'Familiar';
+      document.getElementById(id+'-sel').innerHTML = `<span>${par} – ${t.label}</span>`;
+    };
+    grid.appendChild(c);
+  });
+  document.getElementById(id+'-tipos').style.display = 'block';
+}
+
+addFamEntrada();
+addFamEntrada();
+
+// ── submit paciente ───────────────────────────────────
+function submitPac() {
+  if (!document.getElementById('p-decl').checked) { showToast('Marque a declaração de veracidade'); return; }
+  document.getElementById('pac-form').style.display = 'none';
+  document.getElementById('pac-ok').style.display = 'block';
+  showToast('Questionário enviado!');
+}
+
+// ── médico ────────────────────────────────────────────
+const pacientes = [
+  {nome:'Ana Beatriz Silva', hora:'09:00 · Queda de cabelo'},
+  {nome:'Carla Menezes',     hora:'11:30 · Retorno'},
+];
+function openPac(idx) {
+  document.getElementById('med-lista').style.display = 'none';
+  document.getElementById('med-pront').style.display = 'block';
+  document.getElementById('mp-nome').textContent = pacientes[idx].nome;
+  document.getElementById('mp-hora').textContent = pacientes[idx].hora;
+  subTab('quest');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function closePac() {
+  document.getElementById('med-pront').style.display = 'none';
+  document.getElementById('med-lista').style.display = 'block';
+}
+function salvarPront() { showToast('Prontuário salvo com sucesso!'); }
+
+// ── gerar PDF ─────────────────────────────────────────
+async function gerarPDF() {
+  document.getElementById('pdf-loader').style.display = 'flex';
+  await loadJsPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+
+  const W=210, PX=15;
+  const VERDE=[1,52,37], GOLD=[197,163,101], GOLD_CLR=[253,245,232];
+  const CINZA_BG=[248,249,248], CINZA_BD=[220,224,221];
+  let y = 0;
+
+  // ── helpers ──────────────────────────────────────────
+  function checkPage(needed=20) {
+    if (y + needed > 278) { doc.addPage(); y = 15; }
+  }
+
+  function cabecalho() {
+    doc.setFillColor(...VERDE); doc.rect(0,0,W,24,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.setTextColor(255,255,255);
+    doc.text('TricoMaster', PX, 13);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...GOLD);
+    doc.text('Medicina Capilar', PX, 19.5);
+    doc.setTextColor(255,255,255);
+    doc.text('PRONTUÁRIO · '+hoje.toLocaleDateString('pt-BR'), W-PX, 13, {align:'right'});
+    y = 32;
+  }
+
+  function pacHeader(nome, hora) {
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,20,20);
+    doc.text(nome, PX, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120,120,120);
+    doc.text(hora, PX, y+6);
+    y += 13;
+    doc.setDrawColor(...GOLD); doc.setLineWidth(0.8); doc.line(PX,y,W-PX,y);
+    y += 7;
+  }
+
+  function secHead(txt) {
+    checkPage(14);
+    doc.setFillColor(...VERDE); doc.roundedRect(PX,y,W-PX*2,7,2,2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
+    doc.text(txt, PX+4, y+5); y += 11;
+  }
+
+  function bloco(pares) {
+    // calc total height first
+    let th = 6;
+    pares.forEach(([,v]) => {
+      th += Math.max(doc.splitTextToSize(String(v||'—'), W-PX-68).length*5, 6) + 2;
+    });
+    checkPage(th+6);
+    doc.setFillColor(...CINZA_BG); doc.roundedRect(PX,y-1,W-PX*2,th+4,3,3,'F');
+    doc.setDrawColor(...CINZA_BD); doc.setLineWidth(0.3); doc.roundedRect(PX,y-1,W-PX*2,th+4,3,3,'D');
+    pares.forEach(([l,v]) => {
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(130,130,130);
+      doc.text(l, PX+4, y+4);
+      const lines = doc.splitTextToSize(String(v||'—'), W-PX-68);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(25,25,25);
+      doc.text(lines, 76, y+4);
+      const rh = Math.max(lines.length*5, 6)+2;
+      // separator line
+      doc.setDrawColor(...CINZA_BD); doc.setLineWidth(0.2);
+      doc.line(PX+2, y+rh+1, W-PX-2, y+rh+1);
+      y += rh;
+    });
+    y += 7;
+  }
+
+  function blocoVerde(txt) {
+    const lines = doc.splitTextToSize(txt||'Não informado', W-PX*2-12);
+    const th = lines.length*5.5 + 12;
+    checkPage(th+4);
+    doc.setFillColor(...GOLD_CLR);
+    doc.roundedRect(PX,y-1,W-PX*2,th,3,3,'F');
+    doc.setDrawColor(...GOLD); doc.setLineWidth(0.4);
+    doc.roundedRect(PX,y-1,W-PX*2,th,3,3,'D');
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+    doc.setTextColor(...VERDE);
+    doc.text(lines, PX+6, y+7);
+    y += th+5;
+  }
+
+  // ── getters ───────────────────────────────────────────
+  // paciente
+  function pv(id)  { const s=document.querySelector('#'+id+' .pill.sel'); return s?s.getAttribute('data-val'):'—'; }
+  function pvs(id) { const ss=[...document.querySelectorAll('#'+id+' .pill.sel')]; return ss.length?ss.map(s=>s.getAttribute('data-val')).join(', '):'—'; }
+  function ptxt(id){ return document.getElementById(id)?.value?.trim()||'—'; }
+
+  // histórico familiar
+  function getFamiliar() {
+    const entradas = [];
+    Object.keys(famData).forEach(id => {
+      const d = famData[id];
+      if (d.parentesco || d.tipo) entradas.push((d.parentesco||'?')+' – '+(d.tipo||'?'));
+    });
+    return entradas.length ? entradas.join(' | ') : '—';
+  }
+
+  // queda onde
+  function getQueda() {
+    const map = {qb:'No banho',qe:'Ao escovar',qc:'No chão',qr:'Na roupa',qt:'No travesseiro'};
+    const sim = Object.entries(quedaState).filter(([,v])=>v==='Sim').map(([k])=>map[k]||k);
+    return sim.length ? sim.join(', ') : '—';
+  }
+
+  // médico — antecedentes (dx-row sem id)
+  function getAntecedente(nome) {
+    const all = [...document.querySelectorAll('.dx-row')];
+    const row = all.find(r => !r.id && r.querySelector('.dx-nome')?.textContent.includes(nome));
+    if (!row) return '—';
+    const sim = row.querySelector('.rp.sel-sim');
+    const nao = row.querySelector('.rp.sel-nao');
+    if (!sim && !nao) return '—';
+    if (nao) return 'Não';
+    const det = row.querySelector('.dx-detail input, .dx-detail textarea');
+    const v = det?.value?.trim();
+    return 'Sim' + (v ? ' – '+v : '');
+  }
+
+  // médico — hipótese (dx-row com id)
+  function gdx(rowId) {
+    const r = document.getElementById(rowId);
+    if (!r) return '—';
+    const sim = r.querySelector('.rp.sel-sim');
+    const nao = r.querySelector('.rp.sel-nao');
+    if (!sim && !nao) return '—';
+    if (nao) return 'Não';
+    const det = r.querySelector('.dx-detail input, .dx-detail textarea');
+    const v = det?.value?.trim();
+    return 'Sim' + (v ? ' – '+v : '');
+  }
+
+  // médico — escalas
+  function gsc(id) { const s=document.querySelector('#'+id+' .scale-btn.sel'); return s?s.textContent+'/4':'—'; }
+  // médico — pills
+  function gv(id)  { const s=document.querySelector('#'+id+' .pill.sel'); return s?s.getAttribute('data-val'):'—'; }
+  function gvs(id) { const ss=[...document.querySelectorAll('#'+id+' .pill.sel')]; return ss.length?ss.map(s=>s.getAttribute('data-val')).join(', '):'—'; }
+
+  // ═══════════════════════════════════════════════════
+  // PÁGINA 1 — QUESTIONÁRIO DO PACIENTE
+  // ═══════════════════════════════════════════════════
+  cabecalho();
+  const nomePac = document.getElementById('mp-nome').textContent;
+  const horaPac = document.getElementById('mp-hora').textContent;
+  pacHeader(nomePac, horaPac);
+
+  // identificação
+  secHead('IDENTIFICAÇÃO DO PACIENTE');
+  bloco([
+    ['Nome',           ptxt('p-nome')||nomePac],
+    ['Idade',          ptxt('p-idade') !== '—' ? ptxt('p-idade')+' anos' : '—'],
+    ['Profissão',      ptxt('p-prof')],
+    ['Data',           ptxt('p-data')],
+    ['Convênio',       pv('pg-conv') + (ptxt('p-conv-qual')!=='—' ? ' – '+ptxt('p-conv-qual') : '')],
+    ['Como nos conheceu', pvs('pg-conheceu')],
+  ]);
+
+  secHead('1. QUEIXA PRINCIPAL');
+  bloco([
+    ['Tipo de queixa',   pvs('pg-queixa')],
+    ['Tempo do problema',ptxt('p-tempo')],
+    ['Fios por dia',     ptxt('p-fios')],
+    ['Evolução',         pv('pg-prog')],
+    ['Queda onde ocorre',getQueda()],
+  ]);
+
+  secHead('3. ALTERAÇÕES NO COURO CABELUDO');
+  bloco([['Alterações', pvs('pg-couro')]]);
+
+  secHead('4–5. CRISES E TRATAMENTOS ANTERIORES');
+  bloco([
+    ['Outras crises anteriores', pv('pg-crise') + (ptxt('p-crise-q')!=='—' ? ' – '+ptxt('p-crise-q') : '')],
+    ['Já fez tratamento',        pv('pg-tratou') + (ptxt('p-trat-q')!=='—' ? ' – '+ptxt('p-trat-q') : '')],
+    ['Tipos de tratamento',      pvs('pg-trattipos')],
+  ]);
+
+  secHead('6–9. HÁBITOS CAPILARES');
+  bloco([
+    ['Medicação em uso',    pv('pg-med') + (ptxt('p-med-q')!=='—' ? ' – '+ptxt('p-med-q') : '')],
+    ['Frequência lavagem',  pv('pg-lav')],
+    ['Química no cabelo',   pv('pg-quim') + (pvs('pg-quimtipo')!=='—' ? ' – '+pvs('pg-quimtipo') : '') + (ptxt('p-quim-freq')!=='—' ? ' ('+ptxt('p-quim-freq')+')' : '')],
+    ['Últimos 4 meses',     ptxt('p-quim-4m')],
+    ['Chapinha / Escova',   pv('pg-chap') + (ptxt('p-chap-freq')!=='—' ? ' – '+ptxt('p-chap-freq') : '')],
+    ['Alongamento',         pv('pg-along') + (ptxt('p-along-t')!=='—' ? ' – '+ptxt('p-along-t') : '')],
+  ]);
+
+  secHead('10. HISTÓRICO FAMILIAR DE CALVÍCIE');
+  bloco([['Histórico familiar', getFamiliar()]]);
+
+  // ═══════════════════════════════════════════════════
+  // PÁGINA 2 — ANAMNESE DO MÉDICO
+  // ═══════════════════════════════════════════════════
+  doc.addPage(); y = 15;
+  cabecalho();
+  pacHeader(nomePac, horaPac + ' · Anamnese médica');
+
+  secHead('QUEIXA PRINCIPAL — REGISTRO MÉDICO');
+  bloco([['Queixa (médico)', ptxt('m-queixa')]]);
+
+  secHead('ANTECEDENTES PESSOAIS');
+  bloco([
+    ['1. Doenças Cardíacas',        getAntecedente('Cardíacas')],
+    ['2. Doenças Renais',           getAntecedente('Renais')],
+    ['3. Doenças Cancerígenas',     getAntecedente('Cancerígenas')],
+    ['4. Doenças Neurológicas',     getAntecedente('Neurológicas')],
+    ['5. Doenças Hematológicas',    getAntecedente('Hematológicas')],
+    ['6. Doenças Autoimunes',       getAntecedente('Autoimunes')],
+    ['7. Alergia a Medicamentos',   getAntecedente('Alergia')],
+    ['8. Internações / Cirurgias',  getAntecedente('Internações')],
+    ['9. Medicamentos em uso',      ptxt('m-meds')],
+  ]);
+
+  secHead('PARA MULHERES');
+  bloco([
+    ['1. Doenças Ginecológicas', getAntecedente('Ginecológicas')],
+    ['2. Ciclo menstrual',       gv('pg-ciclo')],
+    ['3. SOP / Fluxo',          gv('pg-sop') + (ptxt('m-fluxo')!=='—' ? ' – '+ptxt('m-fluxo') : '')],
+    ['4. Método de prevenção',  gvs('pg-prev')],
+    ['Quer engravidar',         gv('pg-eng')],
+    ['5. Tem filhos',           gv('pg-filhos')],
+  ]);
+
+  secHead('HÁBITOS E ESTILO DE VIDA');
+  bloco([
+    ['6. Alimentação',         gvs('pg-alim')],
+    ['Água (litros/dia)',      ptxt('m-agua')],
+    ['7. Peso últimos meses',  gv('pg-peso')],
+    ['8. Atividade física',    gv('pg-atv')],
+    ['9. Hábito intestinal',   gv('pg-int')],
+    ['10. Ant. familiares',    gvs('pg-antfam') + (ptxt('m-antfam-outras')!=='—' ? ' / '+ptxt('m-antfam-outras') : '')],
+  ]);
+
+  // ═══════════════════════════════════════════════════
+  // PÁGINA 3 — TRICOSCOPIA + HIPÓTESE + TRATAMENTO
+  // ═══════════════════════════════════════════════════
+  doc.addPage(); y = 15;
+  cabecalho();
+  pacHeader(nomePac, horaPac + ' · Tricoscopia e conduta');
+
+  secHead('TRICOSCOPIA DIGITAL');
+  bloco([
+    ['1. Teste de tração',       gv('pg-trac')],
+    ['2. Haste',                 gv('pg-haste')],
+    ['3. Miniaturização fios',   gv('pg-mini')],
+    ['4. Descamação',            gv('pg-desc')],
+    ['Hiperemia',                gsc('sc-hip')],
+    ['Oleosidade',               gsc('sc-ole')],
+    ['Crescimento fios',         gsc('sc-cres')],
+    ['Pelos cadavéricos/falhas', gvs('pg-outros-trico')],
+    ['Lesões / observações',     ptxt('t-obs')],
+  ]);
+
+  secHead('HIPÓTESE DIAGNÓSTICA');
+  bloco([
+    ['AGG',                  gdx('dr-agg')],
+    ['Alopecia Areata',      gdx('dr-aa')],
+    ['Alopecia Cicatricial', gdx('dr-ac')],
+    ['Dermatite Seborreica', gdx('dr-ds')],
+    ['Eflúvio',              gdx('dr-ef')],
+    ['Outras hipóteses',     ptxt('dx-outras')],
+  ]);
+
+  secHead('TRATAMENTO PROPOSTO');
+  blocoVerde(ptxt('m-trat'));
+
+  // assinaturas
+  checkPage(30);
+  y += 4;
+  doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+  doc.line(PX, y+10, 90, y+10);
+  doc.line(120, y+10, W-PX, y+10);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(140,140,140);
+  doc.text('Assinatura do médico', PX, y+16);
+  doc.text('Assinatura do paciente', 120, y+16);
+  y += 24;
+
+  // rodapé todas as páginas
+  const total = doc.getNumberOfPages();
+  for (let i=1; i<=total; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7); doc.setTextColor(170,170,170);
+    doc.text('TricoMaster · Medicina Capilar · Documento gerado eletronicamente · '+new Date().toLocaleString('pt-BR')+' · Página '+i+' de '+total, W/2, 291, {align:'center'});
+  }
+
+  doc.save('prontuario_'+nomePac.replace(/ /g,'_')+'.pdf');
+  document.getElementById('pdf-loader').style.display = 'none';
+  showToast('PDF gerado — '+total+' páginas!');
+}
+
+async function loadJsPDF() {
+  if (window.jspdf) return;
+  await new Promise((res,rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+}
+
+
+// ── controle de acesso médico ─────────────────────────
+const SENHA_MEDICO = '1234'; // altere aqui
+let medicoAutenticado = false;
+
+function pedirSenha() {
+  if (medicoAutenticado) { switchTab('med'); return; }
+  document.getElementById('modal-senha').style.display = 'flex';
+  document.getElementById('input-senha').value = '';
+  document.getElementById('senha-erro').textContent = '';
+  setTimeout(() => document.getElementById('input-senha').focus(), 100);
+}
+
+function confirmarSenha() {
+  const v = document.getElementById('input-senha').value;
+  if (v === SENHA_MEDICO) {
+    medicoAutenticado = true;
+    fecharSenha();
+    switchTab('med');
+  } else {
+    document.getElementById('senha-erro').textContent = 'Senha incorreta. Tente novamente.';
+    document.getElementById('input-senha').value = '';
+    document.getElementById('input-senha').focus();
+  }
+}
+
+function fecharSenha() {
+  document.getElementById('modal-senha').style.display = 'none';
+}
+
+// fecha modal clicando fora
+document.getElementById('modal-senha').addEventListener('click', function(e) {
+  if (e.target === this) fecharSenha();
+});
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
 
 // ─── ESTADO ──────────────────────────────────────────────────────────────────
 
