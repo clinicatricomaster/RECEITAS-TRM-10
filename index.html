@@ -3,6 +3,625 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TricoMaster Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #F2F4F3; color: #1a1a1a; margin:0; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #C5A365; border-radius: 3px; }
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+        /* ===== LAYOUT ===== */
+        #app-view { display:none; min-height:100vh; }
+
+        /* Desktop: sidebar lateral */
+        @media (min-width: 769px) {
+            #app-view { display:none; flex-direction:row; }
+            #app-view.visible { display:flex !important; }
+            #sidebar { width:220px; min-height:100vh; background:#013425; flex-shrink:0; display:flex; flex-direction:column; padding:20px 0; }
+            #bottom-nav { display:none !important; }
+            #sidebar-logo-text { display:block; }
+            main { flex:1; padding:28px; overflow-y:auto; padding-bottom:28px; }
+        }
+
+        /* Mobile/Tablet: bottom nav */
+        @media (max-width: 768px) {
+            #app-view { display:none; flex-direction:column; }
+            #app-view.visible { display:flex !important; }
+            #sidebar { display:none !important; }
+            #bottom-nav { display:flex !important; position:fixed; bottom:0; left:0; right:0; z-index:100; background:#013425; border-top:1px solid rgba(255,255,255,0.1); padding:6px 0 calc(6px + env(safe-area-inset-bottom)); justify-content:space-around; align-items:center; }
+            .bottom-nav-item { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 12px; border-radius:8px; color:#a3b8b1; cursor:pointer; font-size:10px; font-weight:600; transition:all 0.2s; min-width:56px; }
+            .bottom-nav-item.active { color:#C5A365; }
+            .bottom-nav-item svg { width:22px; height:22px; }
+            main { flex:1; padding:16px; padding-bottom:80px; overflow-y:auto; }
+        }
+
+        #sidebar { width:220px; min-height:100vh; background:#013425; flex-shrink:0; display:flex; flex-direction:column; padding:20px 0; }
+        .nav-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:10px; color:#a3b8b1; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.2s; margin:2px 8px; user-select:none; }
+        .nav-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
+        .nav-item.active { background:#C5A365; color:#013425; font-weight:700; }
+
+        /* ===== CARDS E GRIDS ===== */
+        .card { background:#fff; border-radius:12px; border:1px solid #e8ece9; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+
+        /* Grids responsivos */
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+        .grid-form { display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start; }
+        .grid-editor { display:grid; grid-template-columns:1fr 360px; gap:20px; align-items:start; }
+        .grid-orc { display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start; }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .grid-form, .grid-editor, .grid-orc { grid-template-columns:1fr !important; }
+            .sticky-col { position:static !important; }
+        }
+        @media (max-width: 960px) {
+            .grid-form { grid-template-columns:1fr; }
+            .grid-editor { grid-template-columns:1fr; }
+            .grid-orc { grid-template-columns:1fr; }
+        }
+
+        /* ===== INPUTS ===== */
+        .input-std { width:100%; padding:9px 12px; border:1.5px solid #d1d5db; border-radius:8px; font-size:14px; transition:border 0.2s; outline:none; font-family:'Inter',sans-serif; background:#fff; color:#1a1a1a; text-transform:capitalize; }
+        .input-std:focus { border-color:#C5A365; box-shadow:0 0 0 3px rgba(197,163,101,0.12); }
+        input[type="number"].input-std,
+        input[type="date"].input-std,
+        input[type="email"].input-std,
+        input[type="password"].input-std,
+        select.input-std { text-transform:none; }
+        .input-label { display:block; font-size:11px; font-weight:700; color:#666; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em; }
+
+        /* ===== BOTÕES ===== */
+        .btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:9px 18px; background:#C5A365; color:#fff; border-radius:8px; font-weight:600; font-size:14px; cursor:pointer; border:none; transition:all 0.2s; font-family:'Inter',sans-serif; }
+        .btn-primary:hover { background:#b59254; }
+        .btn-green { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:9px 14px; background:#013425; color:#fff; border-radius:8px; font-weight:600; font-size:14px; cursor:pointer; border:none; transition:all 0.2s; font-family:'Inter',sans-serif; }
+        .btn-green:hover { background:#044E38; }
+        .btn-ghost { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:8px 14px; background:#fff; color:#555; border-radius:8px; font-weight:500; font-size:14px; cursor:pointer; border:1.5px solid #d1d5db; transition:all 0.2s; font-family:'Inter',sans-serif; }
+        .btn-ghost:hover { background:#f5f5f5; }
+        .btn-icon { width:30px; height:30px; border-radius:7px; cursor:pointer; border:none; background:transparent; color:#aaa; transition:all 0.15s; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .btn-icon:hover { background:#f0f0f0; color:#013425; }
+        .btn-danger:hover { background:#fff0f0 !important; color:#dc2626 !important; }
+        .btn-gold:hover { background:#fdf5e8 !important; color:#a07830 !important; }
+        .btn-cortesia { color:#f97316 !important; }
+        .btn-cortesia:hover { background:#fff7ed !important; color:#c2410c !important; }
+
+        /* ===== TABELAS ===== */
+        .data-table { width:100%; border-collapse:collapse; }
+        .data-table th { text-align:left; padding:10px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#888; background:#f9fafb; border-bottom:1px solid #eee; }
+        .data-table td { padding:11px 16px; border-bottom:1px solid #f0f0f0; font-size:14px; vertical-align:middle; }
+        .data-table tr:last-child td { border-bottom:none; }
+        .data-table tr:hover td { background:#fafef9; }
+        .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+        /* Mobile: ocultar colunas menos importantes */
+        @media (max-width: 600px) {
+            .col-hide-sm { display:none !important; }
+            .data-table th, .data-table td { padding:10px 10px; font-size:13px; }
+        }
+
+        /* ===== PILLS ===== */
+        .pill { display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+        .pill-green { background:#e8f5ee; color:#013425; }
+        .pill-gold { background:#fdf5e8; color:#a07830; }
+        .pill-orange { background:#fff7ed; color:#c2410c; }
+
+        /* ===== MODAL ===== */
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:flex-end; justify-content:center; padding:0; }
+        .modal-box { background:#fff; border-radius:16px 16px 0 0; width:100%; max-height:92vh; overflow-y:auto; box-shadow:0 -8px 40px rgba(0,0,0,0.2); }
+        @media (min-width:600px) {
+            .modal-overlay { align-items:center; padding:20px; }
+            .modal-box { border-radius:16px; max-width:500px; }
+        }
+
+        /* ===== SEARCH / PAG ===== */
+        .search-wrap { padding:12px 16px; border-bottom:1px solid #f0f0f0; }
+        .search-row { display:flex; align-items:center; gap:8px; background:#f9fafb; border:1.5px solid #e8ece9; border-radius:8px; padding:0 12px; }
+        .search-row input { border:none; outline:none; font-size:14px; padding:8px 0; flex:1; font-family:'Inter',sans-serif; background:transparent; color:#1a1a1a; }
+        .pagination { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-top:1px solid #f0f0f0; font-size:13px; color:#888; flex-wrap:wrap; gap:8px; }
+        .pag-btns { display:flex; gap:6px; }
+        .pag-btn { padding:4px 12px; border-radius:6px; border:1.5px solid #d1d5db; background:#fff; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; color:#555; }
+        .pag-btn:hover:not(:disabled) { background:#f5f5f5; }
+        .pag-btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+        /* ===== FASES / ITENS ===== */
+        .fase-block { border:1.5px solid #dde4e0; border-radius:12px; overflow:hidden; margin-bottom:12px; }
+        .fase-header { background:#013425; color:#fff; padding:11px 16px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+        .fase-body { padding:12px; background:#fff; }
+        .item-row { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; border:1px solid #eee; margin-bottom:6px; }
+        .item-row.is-cortesia { background:#fff7ed; border-color:#fed7aa; }
+        .item-row.is-normal { background:#f9fafb; }
+
+        .total-box { background:#013425; color:#fff; border-radius:12px; padding:20px; }
+
+        /* ===== TOAST ===== */
+        .toast { position:fixed; bottom:80px; right:16px; z-index:9999; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,0.2); transform:translateY(80px); opacity:0; transition:all 0.3s; max-width:calc(100vw - 32px); }
+        @media (min-width:769px) { .toast { bottom:24px; right:24px; } }
+        .toast.show { transform:translateY(0); opacity:1; }
+        .toast.ok { background:#016630; }
+        .toast.err { background:#dc2626; }
+
+        .empty-state { text-align:center; padding:40px 24px; color:#ccc; font-size:14px; }
+
+        /* ===== SECTION TITLES ===== */
+        .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+
+        /* ===== PRINT ===== */
+        @page { size:A4; margin:15mm; }
+        @media print {
+            body > *:not(#print-view) { display:none !important; }
+            #print-view { display:block !important; position:static !important; background:#fff !important; overflow:visible !important; }
+            .print-controls { display:none !important; }
+            .page-break { page-break-after:always; }
+            body { background:#fff !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        }
+        #print-view { font-family:'Inter',sans-serif; background:#f0f0f0; }
+        .print-page { width:210mm; min-height:297mm; margin:20px auto; background:#fff; padding:15mm; box-shadow:0 0 15px rgba(0,0,0,0.12); }
+        .p-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+        .p-logo { max-height:55px; max-width:150px; object-fit:contain; }
+        .p-hinfo { text-align:right; font-size:11px; color:#555; line-height:1.7; }
+        .p-div { border:none; border-top:2px solid #013425; margin:14px 0; }
+        .p-gdiv { border:none; border-top:2px solid #C5A365; margin:14px 0; }
+        .p-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:#C5A365; margin-bottom:5px; }
+        .p-fase { border:1px solid #ddd; border-radius:7px; margin-bottom:10px; overflow:hidden; }
+        .p-fase-h { background:#013425; color:#fff; padding:7px 12px; font-size:12px; font-weight:700; display:flex; justify-content:space-between; }
+        .p-fase-b { padding:8px 12px; }
+        .p-item { font-size:12px; padding:3px 0; border-bottom:1px solid #f5f5f5; display:flex; justify-content:space-between; align-items:center; }
+        .p-item:last-child { border-bottom:none; }
+        .p-kit-line { font-size:11px; color:#888; padding:1px 0 1px 14px; }
+        .p-total { background:#013425; color:#fff; border-radius:9px; padding:14px 18px; margin-top:14px; }
+        .p-ctable { width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; }
+        .p-ctable th { background:#013425; color:#fff; padding:7px 10px; text-align:left; }
+        .p-ctable td { padding:7px 10px; border-bottom:1px solid #eee; }
+    </style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<!-- LOGIN -->
+<div id="login-view" style="display:flex; min-height:100vh; background:#013425; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:20px; padding:40px; width:100%; max-width:400px; box-shadow:0 30px 80px rgba(0,0,0,0.3);">
+        <div style="text-align:center; margin-bottom:28px;">
+            <div style="width:54px; height:54px; margin:0 auto 12px; border-radius:14px; overflow:hidden;">
+                <img src="https://i.imgur.com/tcv8YJq.png" style="width:54px;height:54px;object-fit:contain;" alt="Logo">
+            </div>
+            <h1 style="font-size:22px; font-weight:700; color:#013425;">TricoMaster</h1>
+            <p style="font-size:13px; color:#888; margin-top:2px;">Sistema de Gestão</p>
+        </div>
+        <form id="login-form">
+            <div style="margin-bottom:14px;"><label class="input-label">E-mail</label><input id="login-email" type="email" class="input-std" placeholder="seu@email.com" required></div>
+            <div style="margin-bottom:20px;"><label class="input-label">Senha</label><input id="login-password" type="password" class="input-std" placeholder="••••••••" required></div>
+            <div id="login-error" style="display:none; background:#fff0f0; border:1px solid #fca5a5; color:#dc2626; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px;"></div>
+            <button id="btn-login" type="submit" class="btn-primary" style="width:100%; padding:12px;">Entrar</button>
+        </form>
+    </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading-view" style="display:none; min-height:100vh; background:#013425; align-items:center; justify-content:center;">
+    <div style="text-align:center; color:#C5A365;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite; display:block; margin:0 auto 12px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <p style="font-size:14px;">Carregando...</p>
+    </div>
+</div>
+
+<!-- APP -->
+<div id="app-view" style="display:none; min-height:100vh;">
+    <!-- SIDEBAR (desktop) -->
+    <aside id="sidebar">
+        <div style="padding:0 16px 24px; display:flex; align-items:center; gap:10px;">
+            <div style="width:36px; height:36px; border-radius:10px; overflow:hidden; flex-shrink:0;">
+                <img src="https://i.imgur.com/gFFObFs.png" style="width:36px;height:36px;object-fit:contain;" alt="Logo">
+            </div>
+            <div id="sidebar-logo-text"><p style="color:#fff; font-weight:700; font-size:14px; line-height:1.2;">TricoMaster</p><p style="color:#5a8a77; font-size:11px;">Manager</p></div>
+        </div>
+        <nav style="flex:1;">
+            <div class="nav-item" id="nav-orcamentos" onclick="app.navigate('orcamentos')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Orçamentos
+            </div>
+            <div class="nav-item" id="nav-protocolos" onclick="app.navigate('protocolos')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="9.5" y="3" width="5" height="18" rx="1"/><rect x="16" y="3" width="5" height="18" rx="1"/></svg> Protocolos
+            </div>
+            <div class="nav-item" id="nav-produtos" onclick="app.navigate('produtos')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Produtos
+            </div>
+            <div class="nav-item" id="nav-config" onclick="app.navigate('config')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M19.07 4.93A10 10 0 1 1 4.93 19.07"/></svg> Configurações
+            </div>
+        </nav>
+        <div style="padding:0 8px; margin-top:auto;">
+            <div class="nav-item" onclick="app.handleLogout()">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sair
+            </div>
+        </div>
+    </aside>
+
+    <!-- BOTTOM NAV (mobile) -->
+    <div id="bottom-nav" style="display:none;">
+        <div class="bottom-nav-item active" id="bnav-orcamentos" onclick="app.navigate('orcamentos')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            Orçamentos
+        </div>
+        <div class="bottom-nav-item" id="bnav-protocolos" onclick="app.navigate('protocolos')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="9.5" y="3" width="5" height="18" rx="1"/><rect x="16" y="3" width="5" height="18" rx="1"/></svg>
+            Protocolos
+        </div>
+        <div class="bottom-nav-item" id="bnav-produtos" onclick="app.navigate('produtos')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            Produtos
+        </div>
+        <div class="bottom-nav-item" id="bnav-config" onclick="app.navigate('config')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M19.07 4.93A10 10 0 1 1 4.93 19.07"/></svg>
+            Config
+        </div>
+        <div class="bottom-nav-item" onclick="app.handleLogout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sair
+        </div>
+    </div>
+
+    <main style="flex:1; overflow-y:auto;">
+
+        <!-- ===== ORÇAMENTOS ===== -->
+        <section id="view-orcamentos" style="display:none;">
+            <div id="orc-list-view">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                    <div><h1 class="section-title" style="font-size:20px;font-weight:700;color:#013425;">Orçamentos</h1><p style="font-size:13px;color:#888;">Mais recentes primeiro</p></div>
+                    <button onclick="app.novoOrcamento()" class="btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo</button>
+                </div>
+                <div class="card" style="overflow:hidden;">
+                    <div class="search-wrap"><div class="search-row"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="orc-search" placeholder="Buscar paciente, médico ou protocolo..." oninput="app.renderOrcamentoList()"></div></div>
+                    <div id="orc-empty" class="empty-state" style="display:none;">Nenhum orçamento encontrado</div>
+                    <div class="table-wrap">
+                    <table class="data-table" id="orc-table">
+                        <thead><tr><th class="col-hide-sm">#</th><th class="col-hide-sm">Data</th><th>Paciente</th><th class="col-hide-sm">Protocolo</th><th class="col-hide-sm">Médico</th><th style="text-align:right;">À Vista</th><th style="text-align:center;">Ações</th></tr></thead>
+                        <tbody id="orc-tbody"></tbody>
+                    </table>
+                    </div>
+                    <div class="pagination" id="orc-pag" style="display:none;"></div>
+                </div>
+            </div>
+
+            <div id="orc-editor-view" style="display:none;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                    <button onclick="app.voltarOrcamentoList()" class="btn-ghost" style="padding:8px 12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,18 9,12 15,6"/></svg> Voltar</button>
+                    <h1 id="orc-editor-titulo" style="font-size:20px;font-weight:700;color:#013425;">Novo Orçamento</h1>
+                </div>
+                <div class="grid-orc">
+                    <div style="display:flex; flex-direction:column; gap:16px;">
+                        <div class="card" style="padding:20px;">
+                            <h3 style="font-size:14px;font-weight:700;color:#013425;margin-bottom:14px;">Dados</h3>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                                <div><label class="input-label">Paciente</label><input id="orc-paciente" type="text" class="input-std" placeholder="Nome completo"></div>
+                                <div><label class="input-label">Médico(a)</label><select id="orc-medico" class="input-std"><option value="">— Selecione —</option></select></div>
+                                <div><label class="input-label">CRM</label><input id="orc-crm" type="text" class="input-std" placeholder="CRM-SP 000000"></div>
+                                <div><label class="input-label">Data</label><input id="orc-data" type="date" class="input-std"></div>
+                            </div>
+                        </div>
+                        <div class="card" style="padding:20px;">
+                            <h3 style="font-size:14px;font-weight:700;color:#013425;margin-bottom:14px;">Composição do Orçamento</h3>
+
+                            <!-- Tabs: Protocolo / Itens Livres -->
+                            <div style="display:flex;gap:5px;background:#f0f2f0;padding:4px;border-radius:9px;margin-bottom:16px;">
+                                <button id="orc-tab-proto-btn" onclick="app.switchOrcTab('protocolo')" style="flex:1;padding:7px;border-radius:6px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;background:#fff;color:#013425;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                                    Por Protocolo
+                                </button>
+                                <button id="orc-tab-itens-btn" onclick="app.switchOrcTab('itens')" style="flex:1;padding:7px;border-radius:6px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;background:transparent;color:#888;">
+                                    Itens Avulsos
+                                </button>
+                            </div>
+
+                            <!-- Painel: Protocolo -->
+                            <div id="orc-panel-protocolo">
+                                <label class="input-label">Selecionar Protocolo</label>
+                                <select id="orc-protocolo-select" class="input-std" onchange="app.selecionarProtocoloOrc()" style="margin-top:4px;">
+                                    <option value="">— Selecione um protocolo —</option>
+                                </select>
+                                <p style="font-size:12px;color:#aaa;margin-top:6px;">O protocolo preenche as fases automaticamente. Você pode editar os itens depois.</p>
+                            </div>
+
+                            <!-- Painel: Itens Livres -->
+                            <div id="orc-panel-itens" style="display:none;">
+                                <p style="font-size:12px;color:#aaa;margin-bottom:10px;">Adicione procedimentos e kits diretamente, sem estrutura de fases.</p>
+                                <button onclick="app.openModalOrcItemLivre()" style="width:100%;padding:9px;background:#f9fafb;border:1.5px dashed #C5A365;border-radius:8px;color:#C5A365;font-weight:600;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;">
+                                    + Adicionar Item
+                                </button>
+                            </div>
+
+                            <!-- Fases (compartilhado pelos dois modos) -->
+                            <div id="orc-fases-editor" style="margin-top:16px;"></div>
+                        </div>
+                        <div class="card" style="padding:20px;">
+                            <h3 style="font-size:14px;font-weight:700;color:#013425;margin-bottom:12px;">Pagamento</h3>
+                            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                                <div><label class="input-label">Desc. À Vista %</label><input id="orc-desc-avista" type="number" step="0.1" min="0" max="100" class="input-std" placeholder="0" oninput="app.calcOrcTotais()"></div>
+                                <div><label class="input-label">Desc. Parcelado %</label><input id="orc-desc-parcelado" type="number" step="0.1" min="0" max="100" class="input-std" placeholder="0" oninput="app.calcOrcTotais()"></div>
+                                <div><label class="input-label">Parcelas</label>
+                                    <select id="orc-parcelas" class="input-std" onchange="app.calcOrcTotais()">
+                                        <option value="1">À Vista</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="6">6x</option><option value="10">10x</option><option value="12">12x</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="position:sticky; top:20px; display:flex; flex-direction:column; gap:14px;">
+                        <div class="total-box">
+                            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C5A365;margin-bottom:12px;">Resumo Financeiro</p>
+                            <div style="display:flex;justify-content:space-between;font-size:13px;color:#a3b8b1;margin-bottom:4px;"><span>Total bruto:</span><span id="orc-val-bruto" style="color:#fff;">R$ 0,00</span></div>
+                            <div style="display:flex;justify-content:space-between;font-size:13px;color:#a3b8b1;margin-bottom:10px;"><span>Cortesias:</span><span id="orc-val-cortesia" style="color:#fdba74;">- R$ 0,00</span></div>
+                            <div style="display:flex;justify-content:space-between;font-size:13px;color:#a3b8b1;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.1);"><span>Base líquida:</span><span id="orc-val-proto" style="color:#fff;font-weight:600;">R$ 0,00</span></div>
+                            <div style="padding-top:10px;">
+                                <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px;"><span style="color:#C5A365;font-weight:600;">À Vista:</span><span id="orc-val-avista" style="color:#fff;font-weight:700;font-size:16px;">R$ 0,00</span></div>
+                                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#C5A365;font-weight:600;">Parcelado:</span><span id="orc-val-parcelado" style="color:#fff;font-weight:600;font-size:13px;">R$ 0,00</span></div>
+                            </div>
+                        </div>
+                        <button onclick="app.saveOrcamento()" class="btn-primary" style="width:100%;padding:12px;font-size:15px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/></svg> Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== PROTOCOLOS ===== -->
+        <section id="view-protocolos" style="display:none;">
+            <div id="proto-list-view">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                    <div><h1 style="font-size:20px;font-weight:700;color:#013425;">Protocolos</h1><p style="font-size:13px;color:#888;">Ordem alfabética</p></div>
+                    <button onclick="app.novoProtocolo()" class="btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo</button>
+                </div>
+                <div class="card" style="overflow:hidden;">
+                    <div class="search-wrap"><div class="search-row"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="proto-search" placeholder="Buscar protocolo..." oninput="app.renderProtocoloList()"></div></div>
+                    <div id="proto-empty" class="empty-state" style="display:none;">Nenhum protocolo encontrado</div>
+                    <div id="proto-lista"></div>
+                    <div class="pagination" id="proto-pag" style="display:none;"></div>
+                </div>
+            </div>
+            <div id="proto-editor-view" style="display:none;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                    <button onclick="app.voltarProtocoloList()" class="btn-ghost" style="padding:8px 12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,18 9,12 15,6"/></svg> Voltar</button>
+                    <h1 id="proto-editor-titulo" style="font-size:20px;font-weight:700;color:#013425;">Novo Protocolo</h1>
+                </div>
+                <div class="grid-editor">
+                    <div style="display:flex; flex-direction:column; gap:16px;">
+                        <div class="card" style="padding:20px;">
+                            <h3 style="font-size:14px;font-weight:700;color:#013425;margin-bottom:14px;">Informações</h3>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                                <div style="grid-column:1/-1;"><label class="input-label">Nome</label><input id="pe-nome" type="text" class="input-std" placeholder="Ex: Protocolo Capilar Premium"></div>
+                                <div style="grid-column:1/-1;"><label class="input-label">Descrição</label><textarea id="pe-desc" class="input-std" rows="2" placeholder="Breve descrição..."></textarea></div>
+                                <div><label class="input-label">Indicação</label><textarea id="pe-indicacao" class="input-std" rows="2" placeholder="Para quem é indicado..."></textarea></div>
+                                <div><label class="input-label">Benefícios</label><textarea id="pe-beneficios" class="input-std" rows="2" placeholder="Principais benefícios..."></textarea></div>
+                            </div>
+                        </div>
+                        <div class="card" style="padding:20px;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                                <h3 style="font-size:14px;font-weight:700;color:#013425;">Composição</h3>
+                            </div>
+                            <!-- Tabs -->
+                            <div style="display:flex;gap:5px;background:#f0f2f0;padding:4px;border-radius:9px;margin-bottom:16px;">
+                                <button id="proto-tab-fases-btn" onclick="app.switchProtoTab('fases')" style="flex:1;padding:7px;border-radius:6px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;background:#fff;color:#013425;box-shadow:0 1px 3px rgba(0,0,0,0.1);">Por Fases</button>
+                                <button id="proto-tab-avulso-btn" onclick="app.switchProtoTab('avulso')" style="flex:1;padding:7px;border-radius:6px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;background:transparent;color:#888;">Itens Avulsos</button>
+                            </div>
+                            <!-- Painel Fases -->
+                            <div id="proto-panel-fases">
+                                <button onclick="app.adicionarFase()" class="btn-primary" style="padding:7px 14px;font-size:13px;margin-bottom:14px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Adicionar Fase</button>
+                            </div>
+                            <!-- Painel Itens Avulsos -->
+                            <div id="proto-panel-avulso" style="display:none;">
+                                <p style="font-size:12px;color:#aaa;margin-bottom:10px;">Adicione procedimentos e kits diretamente, sem estrutura de fases.</p>
+                                <button onclick="app.openModalProtoItemAvulso()" style="width:100%;padding:9px;background:#f9fafb;border:1.5px dashed #C5A365;border-radius:8px;color:#C5A365;font-weight:600;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;">+ Adicionar Item</button>
+                            </div>
+                            <!-- Lista fases/itens -->
+                            <div id="pe-fases-lista"></div>
+                        </div>
+                    </div>
+                    <div style="position:sticky; top:20px; display:flex; flex-direction:column; gap:14px;">
+                        <div class="total-box">
+                            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C5A365;margin-bottom:10px;">Resumo</p>
+                            <div id="pe-resumo-fases" style="font-size:13px;color:#a3b8b1;margin-bottom:12px;"></div>
+                            <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:10px;display:flex;justify-content:space-between;"><span style="color:#a3b8b1;font-size:13px;">Total Bruto:</span><span id="pe-total-bruto" style="color:#fff;font-weight:600;font-size:13px;">R$ 0,00</span></div>
+                        </div>
+                        <div class="card" style="padding:16px;">
+                            <label class="input-label" style="margin-bottom:8px;">Desconto</label>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                                <div><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Em %</label><input id="pe-desc-perc" type="number" step="0.1" min="0" max="100" class="input-std" placeholder="0" oninput="app.calcProtoByPerc()"></div>
+                                <div><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Em R$</label><input id="pe-desc-valor" type="number" step="0.01" min="0" class="input-std" placeholder="0,00" oninput="app.calcProtoByValor()"></div>
+                            </div>
+                            <div style="background:#f9fafb;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                                <span style="font-size:13px;font-weight:700;color:#013425;">Valor Final:</span>
+                                <span id="pe-total-final" style="font-size:20px;font-weight:700;color:#C5A365;">R$ 0,00</span>
+                            </div>
+                        </div>
+                        <button onclick="app.saveProtocolo()" class="btn-primary" style="width:100%;padding:12px;font-size:15px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/></svg> Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== PRODUTOS ===== -->
+        <section id="view-produtos" style="display:none;">
+            <div style="margin-bottom:20px;"><h1 style="font-size:20px;font-weight:700;color:#013425;">Produtos</h1><p style="font-size:13px;color:#888;">Procedimentos avulsos e kits</p></div>
+            <div style="display:flex;gap:5px;background:#e8ece9;padding:4px;border-radius:10px;width:fit-content;margin-bottom:20px;">
+                <button id="tab-btn-avulso" onclick="app.switchProdutoTab('avulso')" style="padding:7px 20px;border-radius:7px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;">Avulso</button>
+                <button id="tab-btn-kit" onclick="app.switchProdutoTab('kit')" style="padding:7px 20px;border-radius:7px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;">Kits</button>
+            </div>
+            <div id="tab-avulso" class="grid-form">
+                <div class="card" style="padding:20px;">
+                    <h3 id="avulso-form-title" style="font-size:15px;font-weight:700;color:#013425;margin-bottom:16px;">Novo Procedimento</h3>
+                    <input type="hidden" id="avulso-id">
+                    <div style="margin-bottom:12px;"><label class="input-label">Nome</label><input id="avulso-nome" type="text" class="input-std" placeholder="Ex: Laserterapia LLLT"></div>
+                    <div style="margin-bottom:16px;"><label class="input-label">Valor (R$)</label><input id="avulso-valor" type="number" step="0.01" min="0" class="input-std" placeholder="0,00"></div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="app.saveAvulso()" class="btn-primary" style="flex:1;">Salvar</button>
+                        <button id="avulso-cancel-btn" onclick="app.resetAvulsoForm()" class="btn-ghost" style="display:none;">Cancelar</button>
+                    </div>
+                </div>
+                <div class="card" style="overflow:hidden;">
+                    <div class="search-wrap"><div class="search-row"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="avulso-search" placeholder="Buscar procedimento..." oninput="app.renderAvulsos()"></div></div>
+                    <div id="avulso-empty" class="empty-state" style="display:none;">Nenhum procedimento cadastrado</div>
+                    <div class="table-wrap">
+                    <table class="data-table" id="avulso-table">
+                        <thead><tr><th>Nome</th><th style="text-align:right;">Valor</th><th style="text-align:center;width:90px;">Ações</th></tr></thead>
+                        <tbody id="avulso-tbody"></tbody>
+                    </table>
+                    </div>
+                    <div class="pagination" id="avulso-pag" style="display:none;"></div>
+                </div>
+            </div>
+            <div id="tab-kit" class="grid-form" style="display:none;">
+                <div class="card" style="padding:20px;">
+                    <h3 id="kit-form-title" style="font-size:15px;font-weight:700;color:#013425;margin-bottom:16px;">Novo Kit</h3>
+                    <input type="hidden" id="kit-id">
+                    <div style="margin-bottom:12px;"><label class="input-label">Nome do Kit</label><input id="kit-nome" type="text" class="input-std" placeholder="Ex: Kit Revitalização"></div>
+                    <div style="border-top:1px solid #f0f0f0;padding-top:12px;margin-bottom:10px;">
+                        <label class="input-label">Adicionar Procedimento</label>
+                        <div style="display:flex;gap:6px;margin-top:6px;">
+                            <select id="kit-proc-select" class="input-std" style="flex:1;"><option value="">Selecione...</option></select>
+                            <input id="kit-proc-qtd" type="number" min="1" value="1" class="input-std" style="width:58px;">
+                            <button onclick="app.addProcToKit()" class="btn-green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                        </div>
+                    </div>
+                    <div id="kit-itens-list" style="margin-bottom:10px;min-height:32px;"></div>
+                    <div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;"><span style="color:#888;">Valor Original:</span><span id="kit-valor-original" style="font-weight:700;color:#013425;">R$ 0,00</span></div>
+                        <label class="input-label" style="margin-bottom:6px;">Desconto</label>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            <div><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Em %</label><input id="kit-desc-perc" type="number" step="0.1" min="0" max="100" class="input-std" placeholder="0" oninput="app.calcKitByPerc()"></div>
+                            <div><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Em R$</label><input id="kit-desc-valor" type="number" step="0.01" min="0" class="input-std" placeholder="0,00" oninput="app.calcKitByValor()"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:14px;margin-top:10px;padding-top:10px;border-top:1px solid #eee;">
+                            <span style="font-weight:700;color:#013425;">Valor Final:</span>
+                            <span id="kit-valor-final" style="font-weight:700;color:#C5A365;font-size:16px;">R$ 0,00</span>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="app.saveKit()" class="btn-primary" style="flex:1;">Salvar Kit</button>
+                        <button id="kit-cancel-btn" onclick="app.resetKitForm()" class="btn-ghost" style="display:none;">Cancelar</button>
+                    </div>
+                </div>
+                <div class="card" style="overflow:hidden;">
+                    <div class="search-wrap"><div class="search-row"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="kit-search" placeholder="Buscar kit..." oninput="app.renderKits()"></div></div>
+                    <div id="kit-empty" class="empty-state" style="display:none;">Nenhum kit cadastrado</div>
+                    <div id="kit-lista"></div>
+                    <div class="pagination" id="kit-pag" style="display:none;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== CONFIG ===== -->
+        <section id="view-config" style="display:none;">
+            <div style="margin-bottom:24px;"><h1 style="font-size:20px;font-weight:700;color:#013425;">Configurações</h1><p style="font-size:13px;color:#888;">Dados da clínica</p></div>
+            <div class="grid-2" style="max-width:900px;">
+                <!-- Dados da clínica -->
+                <div class="card" style="padding:24px;">
+                    <h3 style="font-size:14px;font-weight:700;color:#013425;margin-bottom:16px;">Dados da Clínica</h3>
+                    <div style="display:grid;gap:14px;">
+                        <div><label class="input-label">Nome da Clínica</label><input id="conf-nome" type="text" class="input-std"></div>
+                        <div><label class="input-label">URL do Logo</label><input id="conf-logo" type="text" class="input-std" placeholder="https://..."></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div><label class="input-label">Telefone</label><input id="conf-tel" type="text" class="input-std"></div>
+                            <div><label class="input-label">WhatsApp</label><input id="conf-wpp" type="text" class="input-std"></div>
+                        </div>
+                        <div><label class="input-label">Endereço Linha 1</label><input id="conf-end1" type="text" class="input-std"></div>
+                        <div><label class="input-label">Endereço Linha 2</label><input id="conf-end2" type="text" class="input-std"></div>
+                        <button onclick="app.saveConfig()" class="btn-primary" style="width:fit-content;">Salvar Configurações</button>
+                    </div>
+                </div>
+
+                <!-- Médicos -->
+                <div class="card" style="padding:24px;">
+                    <h3 style="font-size:14px;font-weight:700;color:#013425;margin-bottom:16px;">Médicos</h3>
+                    <input type="hidden" id="medico-edit-id">
+                    <div style="display:grid;gap:10px;margin-bottom:12px;">
+                        <div><label class="input-label">Nome</label><input id="medico-nome" type="text" class="input-std" placeholder="Dr. Nome Sobrenome"></div>
+                        <div><label class="input-label">CRM</label><input id="medico-crm" type="text" class="input-std" placeholder="CRM-SP 000000"></div>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-bottom:16px;">
+                        <button onclick="app.saveMedico()" class="btn-primary" style="flex:1;">Salvar Médico</button>
+                        <button id="medico-cancel-btn" onclick="app.resetMedicoForm()" class="btn-ghost" style="display:none;">Cancelar</button>
+                    </div>
+                    <div id="medicos-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+                    <div id="medicos-empty" class="empty-state" style="padding:20px;display:none;">Nenhum médico cadastrado</div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- MODAL: item na fase do protocolo -->
+<div id="modal-fase-item" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:460px;">
+        <div style="padding:18px 20px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;">
+            <h3 id="modal-fase-titulo" style="font-size:15px;font-weight:700;color:#013425;">Adicionar Item</h3>
+            <button onclick="app.closeModalFaseItem()" class="btn-icon btn-danger"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div style="padding:18px 20px;">
+            <div style="margin-bottom:12px;"><label class="input-label">Tipo</label>
+                <div style="display:flex;gap:8px;margin-top:6px;">
+                    <button id="modal-tipo-avulso" onclick="app.switchModalTipo('avulso')" style="flex:1;padding:8px;border-radius:8px;border:2px solid #013425;background:#013425;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Avulso</button>
+                    <button id="modal-tipo-kit" onclick="app.switchModalTipo('kit')" style="flex:1;padding:8px;border-radius:8px;border:2px solid #ddd;background:#fff;color:#888;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Kit</button>
+                </div>
+            </div>
+            <div style="margin-bottom:12px;"><label class="input-label">Selecionar</label><select id="modal-item-select" class="input-std"></select></div>
+            <div style="margin-bottom:18px;"><label class="input-label">Quantidade</label><input id="modal-item-qtd" type="number" min="1" value="1" class="input-std"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="app.closeModalFaseItem()" class="btn-ghost">Cancelar</button>
+                <button onclick="app.confirmarAddItemFase()" class="btn-primary">Adicionar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: item na fase do orçamento -->
+<div id="modal-orc-item" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:460px;">
+        <div style="padding:18px 20px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;">
+            <h3 id="modal-orc-item-titulo" style="font-size:15px;font-weight:700;color:#013425;">Adicionar Item</h3>
+            <button onclick="app.closeModalOrcItem()" class="btn-icon btn-danger"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div style="padding:18px 20px;">
+            <div style="margin-bottom:12px;"><label class="input-label">Tipo</label>
+                <div style="display:flex;gap:8px;margin-top:6px;">
+                    <button id="modal-orc-tipo-avulso" onclick="app.switchModalOrcTipo('avulso')" style="flex:1;padding:8px;border-radius:8px;border:2px solid #013425;background:#013425;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Avulso</button>
+                    <button id="modal-orc-tipo-kit" onclick="app.switchModalOrcTipo('kit')" style="flex:1;padding:8px;border-radius:8px;border:2px solid #ddd;background:#fff;color:#888;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Kit</button>
+                </div>
+            </div>
+            <div style="margin-bottom:12px;"><label class="input-label">Selecionar</label><select id="modal-orc-select" class="input-std"></select></div>
+            <div style="margin-bottom:18px;"><label class="input-label">Quantidade</label><input id="modal-orc-qtd" type="number" min="1" value="1" class="input-std"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="app.closeModalOrcItem()" class="btn-ghost">Cancelar</button>
+                <button onclick="app.confirmarAddItemOrc()" class="btn-primary">Adicionar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PRINT VIEW -->
+<div id="print-view" style="display:none;position:fixed;inset:0;z-index:100;overflow-y:auto;">
+    <div class="print-controls" style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:110;">
+        <button onclick="window.print()" class="btn-primary">Imprimir</button>
+        <button onclick="app.fecharImpressao()" class="btn-ghost">Fechar</button>
+    </div>
+    <div id="print-content"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script>
+    firebase.initializeApp({
+        apiKey: "AIzaSyAadgJYbyiCJnOai__y2FkDblbyUn1yE3Y",
+        authDomain: "protocolo-trm-10.firebaseapp.com",
+        projectId: "protocolo-trm-10",
+        storageBucket: "protocolo-trm-10.firebasestorage.app",
+        messagingSenderId: "323230389817",
+        appId: "1:323230389817:web:69b41507ec16492e3f9fe8"
+    });
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+</script>
+<script src="app.js"></script>
+</body>
+</html>
+rt" content="width=device-width, initial-scale=1.0">
     <title>RxTricoMaster — Receituário Médico</title>
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
